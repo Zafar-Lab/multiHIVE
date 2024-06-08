@@ -57,7 +57,8 @@ class HierarVAE(TOTALVAE):
             library_log_vars: Optional[np.ndarray] = None,
             use_batch_norm: Tunable[Literal["encoder", "decoder", "none", "both"]] = "both",
             use_layer_norm: Tunable[Literal["encoder", "decoder", "none", "both"]] = "none",
-            kl_dot_product: bool = False
+            kl_dot_product: bool = False,
+            deep_network: bool = False,
     ):
         super().__init__(
             n_input_genes=n_input_genes,
@@ -93,7 +94,8 @@ class HierarVAE(TOTALVAE):
             n_hidden=n_hidden,
             dropout_rate=dropout_rate_encoder,
             distribution=latent_distribution,
-            kl_dot_product= kl_dot_product
+            kl_dot_product= kl_dot_product,
+            deep_network= deep_network,
         )
         self.decoder = Decoder(
             n_latent + n_continuous_cov,
