@@ -22,11 +22,13 @@ class Encoder(nn.Module):
         n_hidden: int = 256,
         dropout_rate: float = 0.1,
         distribution: str = "ln",
-        kl_dot_product: bool = False
+        kl_dot_product: bool = False,
+        deep_network: bool = False
     ):
         super().__init__()
         self.cat = n_cat_list[0]
         self.kl_dot_product = kl_dot_product
+        self.deep_network = deep_network
         n_shared_latent2 = n_latent
         n_shared_latent = n_latent
         n_output = n_latent
@@ -41,10 +43,6 @@ class Encoder(nn.Module):
             nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False),
-            nn.Linear(n_hidden, n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
-            nn.ReLU(),
-            nn.Dropout(p=0.2, inplace=False)
         )
 
         self.encoder_r_1_deep = nn.Sequential(
@@ -64,6 +62,18 @@ class Encoder(nn.Module):
         self.z_mean_encoder_delta_1 = nn.Linear(n_hidden, n_shared_latent)
         self.z_var_encoder_delta_1 = nn.Linear(n_hidden, n_shared_latent)
 
+        self.encoder_r_2 = nn.Sequential(
+            # nn.Linear(n_hidden + n_cat_list[0], n_hidden),
+            nn.Linear(n_hidden, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+        )
+
         self.encoder_r_2_deep = nn.Sequential(
             # nn.Linear(n_hidden + n_cat_list[0], n_hidden),
             nn.Linear(n_hidden, n_hidden),
@@ -80,17 +90,6 @@ class Encoder(nn.Module):
             nn.Dropout(p=0.2, inplace=False),
         )
 
-        self.encoder_r_2 = nn.Sequential(
-            # nn.Linear(n_hidden + n_cat_list[0], n_hidden),
-            nn.Linear(n_hidden, n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
-            nn.ReLU(),
-            nn.Dropout(p=0.2, inplace=False),
-            nn.Linear(n_hidden, n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
-            nn.ReLU(),
-            nn.Dropout(p=0.2, inplace=False),
-        )
         self.mean_encoder_delta_2 = nn.Linear(n_hidden, n_shared_latent2)
         self.logvar_encoder_delta_2 = nn.Linear(n_hidden, n_shared_latent2)
 
@@ -141,22 +140,23 @@ class Encoder(nn.Module):
         return z, untran_z
 
     def forward(self, gene: torch.Tensor, protein: torch.Tensor, data: torch.Tensor,  *cat_list: int):
-        """Forward computation on ``x``.
-
-        :param x:
-            tensor of values with shape ``(n_in,)``
-        :returns:
-            tensor of values with shape ``(n_out,)``
-        """
         batch_onehot_data = one_hot(*cat_list, self.cat)
         data1 = torch.cat((data, batch_onehot_data), dim=-1)
-        r_1 = self.encoder_r_1(data1)
+
+        if self.deep_network:
+            r_1 = self.encoder_r_1_deep(data1)
+        else:
+            r_1 = self.encoder_r_1(data1)
 
         delta_mu_1 = self.z_mean_encoder_delta_1(r_1)
         delta_logvar_1 = self.z_var_encoder_delta_1(r_1)
         delta_logvar_1 = F.hardtanh(delta_logvar_1, -7., 2.)
 
-        r_2 = self.encoder_r_2(r_1)
+        if self.deep_network:
+            r_2 = self.encoder_r_2_deep(r_1)
+        else:
+            r_2 = self.encoder_r_2(r_1)
+
         delta_mu_2 = self.mean_encoder_delta_2(r_2)
         delta_logvar_2 = self.logvar_encoder_delta_2(r_2)
         delta_logvar_2 = F.hardtanh(delta_logvar_2, -7., 2.)

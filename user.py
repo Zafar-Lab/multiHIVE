@@ -18,8 +18,8 @@ def start_script():
     adata.var_names_make_unique()
     adata.obsm['protein_counts'] = adata.obsm['protein_counts'].toarray()
     import numpy as np
-    
-
+    #
+    #
     sc.pp.filter_cells(adata, min_genes=200)
     sc.pp.filter_genes(adata, min_cells=3)
     sc.pp.highly_variable_genes(
@@ -39,8 +39,9 @@ def start_script():
         protein_expression_obsm_key="protein_counts"
     )
 
-    vae = HierarVI(adata, latent_distribution="normal",override_missing_proteins=True, kl_dot_product=True)
-    vae.train(max_epochs=250)
+
+    vae = HierarVI(adata, latent_distribution="normal", kl_dot_product=True, deep_network=True)
+    vae.train(max_epochs=200)
     adata.obsm["Z1_totalVI"], adata.obsm["Z2_totalVI"], adata.obsm["Z1r_totalVI"], adata.obsm["Z1p_totalVI"] = vae.get_latent_representation()
     adata.obsm['Zc_totalVI'] = np.concatenate((adata.obsm["Z1_totalVI"], adata.obsm["Z1r_totalVI"], adata.obsm["Z1p_totalVI"]), axis=1)
 
