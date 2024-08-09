@@ -103,6 +103,22 @@ class Encoder(nn.Module):
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False)
         )
+
+        self.gene_encoder_deep = nn.Sequential(
+            nn.Linear(n_input_genes + n_cat_list[0], n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+        )
+
         self.zr_mean_encoder = nn.Linear(n_hidden, n_output)
         self.zr_var_encoder = nn.Linear(n_hidden, n_output)
 
@@ -116,11 +132,42 @@ class Encoder(nn.Module):
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False),
         )
+
+        self.protein_encoder_deep = nn.Sequential(
+            nn.Linear(n_input_proteins + n_cat_list[0], n_hidden_protein),
+            nn.BatchNorm1d(n_hidden_protein, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden_protein, n_hidden_protein),
+            nn.BatchNorm1d(n_hidden_protein, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden_protein, n_hidden_protein),
+            nn.BatchNorm1d(n_hidden_protein, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+        )
+
         self.zp_mean_encoder = nn.Linear(n_hidden_protein, n_output)
         self.zp_var_encoder = nn.Linear(n_hidden_protein, n_output)
 
         self.encoder_z_1 = nn.Sequential(
             nn.Linear(n_shared_latent2, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+        )
+
+        self.encoder_z_1_deep = nn.Sequential(
+            nn.Linear(n_shared_latent2, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden, n_hidden),
             nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False),
@@ -166,7 +213,11 @@ class Encoder(nn.Module):
         untran_z2 = q_z2.rsample()
         z2 = untran_z2
 
-        h_1 = self.encoder_z_1(z2)
+        if self.deep_network:
+            h_1 = self.encoder_z_1_deep(z2)
+        else:
+            h_1 = self.encoder_z_1(z2)
+
         mu_1 = self.mean_encoder_1(h_1)
         logvar_1 = self.logvar_encoder_1(h_1)
         z1_mu = delta_mu_1 + mu_1
@@ -178,7 +229,10 @@ class Encoder(nn.Module):
         KL_z_1 = 0.5 * (delta_mu_1 ** 2 / torch.exp(logvar_1) + torch.exp(delta_logvar_1) - delta_logvar_1 - 1).sum(
             -1)
 
-        r_1_gene = self.gene_encoder(torch.cat((gene, batch_onehot_data), dim=-1))
+        if self.deep_network:
+            r_1_gene = self.gene_encoder_deep(torch.cat((gene, batch_onehot_data), dim=-1))
+        else:
+            r_1_gene = self.gene_encoder(torch.cat((gene, batch_onehot_data), dim=-1))
         delta_mu_1_gene = self.zr_mean_encoder(r_1_gene)
         delta_logvar_1_gene = self.zr_var_encoder(r_1_gene)
         delta_logvar_1_gene = F.hardtanh(delta_logvar_1_gene, -7., 2.)
@@ -188,7 +242,10 @@ class Encoder(nn.Module):
         z1r = untran_z1r
         KL_z_1r = 0.5 * (delta_mu_1_gene ** 2 + torch.exp(delta_logvar_1_gene) - delta_logvar_1_gene - 1).sum(-1)
 
-        r_1_protein = self.protein_encoder(torch.cat((protein, batch_onehot_data), dim=-1))
+        if self.deep_network:
+            r_1_protein = self.protein_encoder_deep(torch.cat((protein, batch_onehot_data), dim=-1))
+        else:
+            r_1_protein = self.protein_encoder(torch.cat((protein, batch_onehot_data), dim=-1))
         delta_mu_1_protein = self.zp_mean_encoder(r_1_protein)
         delta_logvar_1_protein = self.zp_var_encoder(r_1_protein)
         delta_logvar_1_protein = F.hardtanh(delta_logvar_1_protein, -7., 2.)
