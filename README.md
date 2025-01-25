@@ -37,10 +37,10 @@ python3 user.py
 3. **Results**:
 
    - `vae.get_latent_representation()` gives z1, z2, z1r and z1p
-      z1 is the joint latent distribution.
-      z2 is the hierarchical joint latent distribution.
-      z1r is the gene modality specific latent distribution.
-      z1p is the protein modality specific latent distribution.
+   -  z1 is the joint latent distribution. 
+   -  z2 is the hierarchical joint latent distribution.
+   -  z1r is the gene modality specific latent distribution.
+   -  z1p is the protein modality specific latent distribution.
 
 4. **Additional Resources**:
 
