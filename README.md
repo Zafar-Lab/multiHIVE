@@ -1,23 +1,36 @@
-MultuHIVE
+# MultiHIVE
 
+## Basic Installation
 
-Basic installation
+To install the required dependencies, run the following commands:
 
+```bash
 pip install scvi-tools
 pip install matplotlib
 pip install scikit-learn
+```
 
+## Steps to Run
 
-Steps to run:
+Run the `user.py` script to execute the model:
+
+```bash
 python3 user.py
+```
 
-Folder structure:
+## Folder Structure and Parameters
 
-1. user.py can be used to run the model.
-2. Model takes following parameters:
-    2.1 latent distribution - To determine the probability distribution of the normal space (Eg. Normal)
-    2.2  kl_dot_product - Used for regularization of the modality specfic latent distributions. Set to true.
-    2.3  deep_network - Uses multiple layers in the underlying neural network. Set to True if the dataset 
-                        contains more than 100,000 cells.
+1. **Main Script**:
 
-3. Refer scvi https://github.com/scverse/scvi-tools for preprocessing parameters.
+   - `user.py` is the main script used to run the model.
+
+2. **Model Parameters**:
+
+   - ``: Determines the probability distribution of the latent space (e.g., `Normal`).
+   - ``: Used for regularization of modality-specific latent distributions. Set to `True`.
+   - ``: Enables multiple layers in the underlying neural network. Set to `True` if the dataset contains more than **100,000 cells**.
+
+3. **Additional Resources**:
+
+   - Refer to the [scvi-tools documentation](https://github.com/scverse/scvi-tools) for details on preprocessing parameters and other advanced configurations.
+
