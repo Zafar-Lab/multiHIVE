@@ -34,6 +34,14 @@ python3 user.py
    - `kl_dot_product`: Used for regularization of modality-specific latent distributions. Set to `True`.
    - `deep_network`: Enables multiple layers in the underlying neural network. Set to `True` if the dataset contains more than **100,000 cells**.
 
-3. **Additional Resources**:
+3. **Results**:
+
+   - `vae.get_latent_representation()` gives z1, z2, z1r and z1p
+      z1 is the joint latent distribution.
+      z2 is the hierarchical joint latent distribution.
+      z1r is the gene modality specific latent distribution.
+      z1p is the protein modality specific latent distribution.
+
+4. **Additional Resources**:
 
    - Refer to the [scvi-tools documentation](https://github.com/scverse/scvi-tools) for details on preprocessing parameters and other advanced configurations.

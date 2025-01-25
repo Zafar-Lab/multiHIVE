@@ -42,8 +42,8 @@ def start_script():
 
     vae = HierarVI(adata, latent_distribution="normal", kl_dot_product=True, deep_network=True)
     vae.train(max_epochs=200)
-    adata.obsm["Z1_totalVI"], adata.obsm["Z2_totalVI"], adata.obsm["Z1r_totalVI"], adata.obsm["Z1p_totalVI"] = vae.get_latent_representation()
-    adata.obsm['Zc_totalVI'] = np.concatenate((adata.obsm["Z1_totalVI"], adata.obsm["Z1r_totalVI"], adata.obsm["Z1p_totalVI"]), axis=1)
+    adata.obsm["Z1_hierarVI"], adata.obsm["Z2_hierarVI"], adata.obsm["Z1r_hierarVI"], adata.obsm["Z1p_hierarVI"] = vae.get_latent_representation()
+    adata.obsm['Zc_hierarVI'] = np.concatenate((adata.obsm["Z1_hierarVI"], adata.obsm["Z1r_hierarVI"], adata.obsm["Z1p_hierarVI"]), axis=1)
 
     #generated_data = vae.posterior_predictive_sample(adata, swap_latent=False)
 
