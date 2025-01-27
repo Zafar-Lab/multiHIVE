@@ -1,22 +1,33 @@
 # MultiHIVE
 
+## Overview
+multiHIVE, a hierarchical multimodal deep generative model for inferring cellular embeddings by integrating CITE-seq data modalities. multiHIVE employs hierarchically stacked latent variables as well as modality-specific latent variables to capture shared and private information from the modalities respectively, facilitating integration, denoising and protein imputation and integration of CITE-seq dataset with unimodal dataset. The factorization of multiHIVE-inferred denoised expression into gene expression programs aids in identifying biological processes at multiple levels of cellular hierarchy.
+<p align="center">
+<img src="Architecture.png" alt="multiHIVE-Architecture" width="500"/>
+</p>
+
 ## Basic Installation
 
-To install the required dependencies, run the following commands:
+we recommend users to directly clone our stable main branch and set multiHIVE as the working directory and install following dependencies in a new conda environment `python>=3.10`
 
 ```bash
-pip install scvi-tools
-pip install matplotlib
-pip install scikit-learn
+git clone https://github.com/Zafar-Lab/multiHIVE.git
+pip install scvi-tools==0.20.0
+pip install scanpy==1.10.0
+pip install anndata==0.10.6
+pip install scikit-misc
 ```
 
 ## Steps to Run
-
 Run the `user.py` script to execute the model:
 
 ```bash
 python3 user.py
 ```
+
+## Tutorials
+CITE-seq integration: [Tutorials/CITE_seq_Integration.ipynb](Tutorials/CITE_seq_Integration.ipynb)  
+Protein Imputation: [Tutorials/Protein_Imputatoin.ipynb](Tutorials/Protein_Imputatoin.ipynb)
 
 ## Folder Structure and Parameters
 
@@ -27,7 +38,7 @@ python3 user.py
    vae.train()
 ````
    - The `user.py` script can be referred to run the model.
-
+   
 2. **Model Parameters**:
 
    - `latent_distribution`: Determines the probability distribution of the latent space (e.g., `Normal`).
@@ -36,12 +47,12 @@ python3 user.py
 
 3. **Results**:
 
-   - `vae.get_latent_representation()` gives z1, z2, z1r and z1p
-   -  z1 is the joint latent distribution. 
-   -  z2 is the hierarchical joint latent distribution.
-   -  z1r is the gene modality specific latent distribution.
-   -  z1p is the protein modality specific latent distribution.
+   - `vae.get_latent_representation()` gives zs1, zs2, zr and zp
+   -  zs1 is the joint latent distribution. 
+   -  zs2 is the hierarchical joint latent distribution.
+   -  zr is the gene modality specific latent distribution.
+   -  zp is the protein modality specific latent distribution.
 
 4. **Additional Resources**:
 
-   - Refer to the [scvi-tools documentation](https://github.com/scverse/scvi-tools) for details on preprocessing parameters and other advanced configurations.
+   - Refer to the [scvi-tools TotalVI documentation](https://docs.scvi-tools.org/en/latest/api/reference/scvi.model.TOTALVI.html) for details on preprocessing parameters and other advanced configurations.
