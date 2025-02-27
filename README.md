@@ -56,3 +56,8 @@ Protein Imputation: [Tutorials/Protein_Imputatoin.ipynb](Tutorials/Protein_Imput
 4. **Additional Resources**:
 
    - Refer to the [scvi-tools TotalVI documentation](https://docs.scvi-tools.org/en/latest/api/reference/scvi.model.TOTALVI.html) for details on preprocessing parameters and other advanced configurations.
+
+## Cite this article
+multiHIVE: Hierarchical Multimodal Deep Generative Model for Single-cell Multiomics Integration  
+Anirudh Nanduri, Musale Krushna Pavan, Kushagra Pandey, Hamim Zafar  
+bioRxiv 2025.01.28.635222; doi: https://doi.org/10.1101/2025.01.28.635222
