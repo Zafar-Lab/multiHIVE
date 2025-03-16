@@ -436,7 +436,8 @@ class HierarVAE(TOTALVAE):
         x = tensors[REGISTRY_KEYS.X_KEY]
         batch_index = tensors[REGISTRY_KEYS.BATCH_KEY]
         y = tensors[REGISTRY_KEYS.PROTEIN_EXP_KEY]
-        z = tensors[REGISTRY_KEYS.ATAC_EXP_KEY] #Need to revisit
+        z = tensors.get(REGISTRY_KEYS.ATAC_X_KEY, None)
+       
 
         if self.protein_batch_mask is not None:
             pro_batch_mask_minibatch = torch.zeros_like(y)
