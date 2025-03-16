@@ -16,6 +16,7 @@ class Encoder(nn.Module):
         self,
         n_input_genes: int,
         n_input_proteins: int,
+        n_input_acc: int,
         n_input: int,
         n_latent: 20,
         n_cat_list: Iterable[int] = None,
@@ -151,6 +152,36 @@ class Encoder(nn.Module):
         self.zp_mean_encoder = nn.Linear(n_hidden_protein, n_output)
         self.zp_var_encoder = nn.Linear(n_hidden_protein, n_output)
 
+
+        self.acc_encoder = nn.Sequential(
+            nn.Linear(n_input_acc + n_cat_list[0], n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+        )
+
+        self.acc_encoder_deep = nn.Sequential(
+            nn.Linear(n_input_acc + n_cat_list[0], n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+            nn.Linear(n_hidden, n_hidden),
+            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
+            nn.ReLU(),
+            nn.Dropout(p=0.2, inplace=False),
+        )
+
+        self.za_mean_encoder = nn.Linear(n_hidden, n_output)
+        self.za_var_encoder = nn.Linear(n_hidden, n_output)
+
         self.encoder_z_1 = nn.Sequential(
             nn.Linear(n_shared_latent2, n_hidden),
             nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True),
@@ -179,6 +210,8 @@ class Encoder(nn.Module):
         self.z_transformation = nn.Softmax(dim=-1)
         self.zr_transformation = nn.Softmax(dim=-1)
         self.zp_transformation = nn.Softmax(dim=-1)
+        self.za_transformation = nn.Softmax(dim=-1)
+
 
     def reparameterize_transformation(self, mu, var):
         """Reparameterization trick to sample from a normal distribution."""
@@ -186,7 +219,7 @@ class Encoder(nn.Module):
         z = self.z_transformation(untran_z)
         return z, untran_z
 
-    def forward(self, gene: torch.Tensor, protein: torch.Tensor, data: torch.Tensor,  *cat_list: int):
+    def forward(self, gene: torch.Tensor, protein: torch.Tensor, acc: torch.Tensor, data: torch.Tensor,  *cat_list: int):
         batch_onehot_data = one_hot(*cat_list, self.cat)
         data1 = torch.cat((data, batch_onehot_data), dim=-1)
 
@@ -254,13 +287,27 @@ class Encoder(nn.Module):
         untran_z1p = q_z1p.rsample()
         z1p = untran_z1p
 
-        KL_z_1p = 0.5 * (
-            delta_mu_1_protein ** 2 + torch.exp(delta_logvar_1_protein) - delta_logvar_1_protein - 1).sum(-1)
+        if self.deep_network:
+            r_1_acc = self.acc_encoder_deep(torch.cat((acc, batch_onehot_data), dim=-1))
+        else:
+            r_1_acc = self.acc_encoder(torch.cat((acc, batch_onehot_data), dim=-1))
 
-        KL = KL_z_1 + KL_z_2 + KL_z_1r + KL_z_1p
+
+        delta_mu_1_acc = self.za_mean_encoder(r_1_acc)
+        delta_logvar_1_acc = self.zp_var_encoder(r_1_acc)
+        delta_logvar_1_acc = F.hardtanh(delta_logvar_1_acc, -7., 2.)
+        delta_var_1_acc = torch.exp(0.5 * delta_logvar_1_acc) + 1e-4
+        q_z1a = Normal(delta_mu_1_protein, delta_var_1_acc.sqrt())
+        untran_z1a = q_z1a.rsample()
+        z1a = untran_z1a
+
+        KL_z_1a = 0.5 * (
+            delta_mu_1_acc ** 2 + torch.exp(delta_logvar_1_acc) - delta_logvar_1_acc - 1).sum(-1)
+
+        KL = KL_z_1 + KL_z_2 + KL_z_1r + KL_z_1p + KL_z_1a
 
         if(self.kl_dot_product):
-            KL = KL + + 0.6 * torch.abs((z1 * z1p).sum(dim=1)) + 0.6 * torch.abs((z1 * z1r).sum(dim=1))
+            KL = KL + + 0.6 * torch.abs((z1 * z1p).sum(dim=1)) + 0.6 * torch.abs((z1 * z1r).sum(dim=1)) + 0.6 * torch.abs((z1 * z1a).sum(dim=1))
 
 
         latent = {}
@@ -271,13 +318,15 @@ class Encoder(nn.Module):
         latent["kl"] = KL
         latent["z1r"] = z1r
         latent["z1p"] = z1p
+        latent["z1a"] = z1a
 
         untran_latent["z1"] = untran_z1
         untran_latent["z2"] = untran_z2
         untran_latent["z1r"] = untran_z1r
         untran_latent["z1p"] = untran_z1p
+        untran_latent["z1a"] = untran_z1a
 
-        return q_z1, q_z2, latent, untran_latent, q_z1r, q_z1p
+        return q_z1, q_z2, latent, untran_latent, q_z1r, q_z1p, qz1a
 
 
 class Decoder(nn.Module):
@@ -410,9 +459,28 @@ class Decoder(nn.Module):
             **linear_args,
         )
 
-    def forward(self, z: torch.Tensor, zr: torch.Tensor, zp: torch.Tensor, library_gene: torch.Tensor, *cat_list: int):
+        self.pa_decoder = FCLayers(
+            n_in=n_input + n_shared_latent,
+            n_out=n_hidden,
+            n_cat_list=n_cat_list,
+            n_layers=n_layers,
+            n_hidden=n_hidden,
+            dropout_rate=0,
+            activation_fn=torch.nn.LeakyReLU,
+            use_batch_norm=use_batch_norm,
+            use_layer_norm=use_layer_norm,
+            inject_covariates=deep_inject_covariates,
+            **kwargs,
+        )
+
+        self.pa_output = torch.nn.Sequential(torch.nn.Linear(n_hidden, n_output), torch.nn.Sigmoid())
+
+
+
+    def forward(self, z: torch.Tensor, zr: torch.Tensor, zp: torch.Tensor, za: torch.Tensor, library_gene: torch.Tensor, *cat_list: int):
         px_ = {}
         py_ = {}
+        pa_ = {}
 
         px = self.px_decoder(torch.cat([z, zr], dim=-1), *cat_list)
         px_cat_z = torch.cat([px, z, zr], dim=-1)
@@ -446,7 +514,10 @@ class Decoder(nn.Module):
             (1 - protein_mixing) * py_["rate_fore"], p=1, dim=-1
         )
 
-        return (px_, py_, log_pro_back_mean)
+        pa = self.pa_decoder(torch.cat([z, za], dim=-1), *cat_list)
+        pa_["pa"] = pa
+
+        return (px_, py_, pa_, log_pro_back_mean)
 
 
 

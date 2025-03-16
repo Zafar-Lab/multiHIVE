@@ -135,7 +135,7 @@ class HierarVI(TOTALVI):
         self._check_if_trained(warn=False)
 
         adata = self._validate_anndata(adata)
-        scdl = self._make_data_loader(
+        scdl = self._make_data_loader(  #Need to implement in hierarVAE to return atac in scdl. Currently inherited from totalVAE in scvi code
             adata=adata, indices=indices, batch_size=batch_size
         )
         latent1 = []
@@ -144,13 +144,14 @@ class HierarVI(TOTALVI):
         latent1p = []
 
         for tensors in scdl:
-            inference_inputs = self.module._get_inference_input(tensors)
+            inference_inputs = self.module._get_inference_input(tensors) #Need to implement in hierarVAE to return atac in inference_inputs. Currently inherited from totalVAE
             outputs = self.module.inference(**inference_inputs)
             if "qz1" in outputs:
                 qz1 = outputs["qz1"]
                 qz2 = outputs["qz2"]
                 qz1r = outputs["qz1r"]
                 qz1p = outputs["qz1p"]
+                qz1a = outputs["qz1a"]
                 # qzr = outputs["qzr"]
                 # qzp = outputs["qzp"]
             else:
@@ -167,21 +168,24 @@ class HierarVI(TOTALVI):
                     z2 = qz2.loc
                     z1r = qz1r.loc
                     z1p = qz1p.loc
+                    z1a = qz1a.loc
 
             else:
                 z1 = outputs["z1"]
                 z2 = outputs["z2"]
                 z1r = outputs["z1r"]
                 z1p = outputs["z1p"]
+                z1a = outputs["z1a"]
 
             latent1 += [z1.cpu()]
             latent2 += [z2.cpu()]
             latent1r += [z1r.cpu()]
             latent1p += [z1p.cpu()]
+            latent1a += [z1a.cpu()]
 
         return (
             torch.cat(latent1).numpy(), torch.cat(latent2).numpy(), torch.cat(latent1r).numpy(),
-            torch.cat(latent1p).numpy()
+            torch.cat(latent1p).numpy(), torch.cat(latent1a).numpy()
         )
 
     @torch.inference_mode()
@@ -193,6 +197,7 @@ class HierarVI(TOTALVI):
             batch_size: Optional[int] = None,
             gene_list: Optional[Sequence[str]] = None,
             protein_list: Optional[Sequence[str]] = None,
+            atac_list: Optional[Sequence[str]] = None,
             swap_latent=False,
     ) -> np.ndarray:
         r"""Generate observation samples from the posterior predictive distribution.
@@ -238,7 +243,13 @@ class HierarVI(TOTALVI):
             all_proteins = self.protein_state_registry.column_names
             protein_mask = [True if p in protein_list else False for p in all_proteins]
 
-        scdl = self._make_data_loader(
+        if atac_list is None:
+            atac_mask = slice(None)
+        else:
+            all_atac = self.atac_state_registry.column_names
+            atac_mask = [True if atac in atac_list else False for atac in all_atac]
+
+        scdl = self._make_data_loader( #Need to implement in hierarVAE to return atac in scdl. Currently inherited from totalVAE in scvi code
             adata=adata, indices=indices, batch_size=batch_size
         )
 
@@ -249,7 +260,8 @@ class HierarVI(TOTALVI):
             )
             rna_sample = rna_sample[..., gene_mask]
             protein_sample = protein_sample[..., protein_mask]
-            data = torch.cat([rna_sample, protein_sample], dim=-1).numpy()
+            atac_sample = protein_sample[..., atac_mask]
+            data = torch.cat([rna_sample, protein_sample, atac_sample], dim=-1).numpy()
 
             scdl_list += [data]
             if n_samples > 1:

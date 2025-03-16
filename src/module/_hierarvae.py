@@ -29,8 +29,9 @@ def _get_dict_if_none(param):
 class HierarVAE(TOTALVAE):
     def __init__(
             self,
-            n_input_genes: int,
-            n_input_proteins: int,
+            n_input_regions: int = 0,
+            n_input_genes: int = 0,
+            n_input_proteins: int = 0,
             n_batch: int = 0,
             n_labels: int = 0,
             n_hidden: Tunable[int] = 256,
@@ -79,15 +80,31 @@ class HierarVAE(TOTALVAE):
             library_log_vars=library_log_vars
         )
 
-        n_input = n_input_genes + self.n_input_proteins
+        # accessibility
+        # accessibility encoder
+        if self.n_input_regions == 0:
+            input_acc = 1
+        else:
+            input_acc = self.n_input_regions
+        
+        self.n_input_regions = n_input_regions
+        n_input = n_input_genes + self.n_input_proteins + input_acc
         n_input_encoder = n_input + n_continuous_cov * encode_covariates
 
         cat_list = [n_batch] + list([] if n_cats_per_cov is None else n_cats_per_cov)
         encoder_cat_list = cat_list if encode_covariates else None
 
+        if n_hidden is None:
+            if n_input_regions == 0:
+                n_hidden = np.min([128, int(np.sqrt(n_input_genes))])
+            else:
+                n_hidden = np.min([128, int(np.sqrt(self.n_input_regions))])
+
+    
         self.encoder = Encoder(
             n_input_genes=n_input_genes,
             n_input_proteins=n_input_proteins,
+            n_input_acc = input_acc,
             n_input=n_input_encoder,
             n_latent=n_latent,
             n_cat_list=encoder_cat_list,
@@ -96,11 +113,13 @@ class HierarVAE(TOTALVAE):
             distribution=latent_distribution,
             kl_dot_product= kl_dot_product,
             deep_network= deep_network,
+
         )
         self.decoder = Decoder(
             n_latent + n_continuous_cov,
             n_input_genes,
             self.n_input_proteins,
+            self.n_input_acc,
             n_layers=n_layers_decoder,
             n_cat_list=cat_list,
             n_hidden=n_hidden,
@@ -109,11 +128,17 @@ class HierarVAE(TOTALVAE):
             use_layer_norm=False,
             scale_activation="softplus" if use_size_factor_key else "softmax",
         )
+    
+        def get_reconstruction_loss_accessibility(self, x, p, d):
+            """Computes the reconstruction loss for the accessibility data."""
+            reg_factor = torch.sigmoid(self.region_factors) if self.region_factors is not None else 1
+            return torch.nn.BCELoss(reduction="none")(p * d * reg_factor, (x > 0).float()).sum(dim=-1)
 
     def _get_generative_input(self, tensors, inference_outputs):
         z = inference_outputs["z1"]
         z1r = inference_outputs["z1r"]
         z1p = inference_outputs["z1p"]
+        z1a = inference_outputs["z1a"]
 
         library_gene = inference_outputs["library_gene"]
         batch_index = tensors[REGISTRY_KEYS.BATCH_KEY]
@@ -134,6 +159,7 @@ class HierarVAE(TOTALVAE):
             "z": z,
             "zr": z1r,
             "zp": z1p,
+            "z1": z1a
             "library_gene": library_gene,
             "batch_index": batch_index,
             "label": label,
@@ -213,6 +239,8 @@ class HierarVAE(TOTALVAE):
             self,
             x: torch.Tensor,
             y: torch.Tensor,
+            z: torch.Tensor, # atac
+            size_factor, 
             batch_index: Optional[torch.Tensor] = None,
             label: Optional[torch.Tensor] = None,
             n_samples=1,
@@ -253,11 +281,14 @@ class HierarVAE(TOTALVAE):
         """
         x_ = x
         y_ = y
+        z_ = z
 
         library_gene = x.sum(1).unsqueeze(1)
         if self.log_variational:
             x_ = torch.log(1 + x_)
             y_ = torch.log(1 + y_)
+            z_ = torch.log(1 + z_)
+
 
         if cont_covs is not None and self.encode_covariates is True:
             encoder_input = torch.cat((x_, y_, cont_covs), dim=-1)
@@ -267,9 +298,12 @@ class HierarVAE(TOTALVAE):
             categorical_input = torch.split(cat_covs, 1, dim=1)
         else:
             categorical_input = ()
-        qz1, qz2, latent, untran_latent, qz1r, qz1p = self.encoder(
-            x_, y_, encoder_input, batch_index, *categorical_input
+        qz1, qz2, latent, untran_latent, qz1r, qz1p, qz1a = self.encoder(
+            x_, y_, z_, encoder_input, batch_index, *categorical_input
         )
+
+        libsize_expr = torch.log(size_factor[:, [0]] + 1e-6)
+        libsize_acc = size_factor[:, [1]]
 
         z1 = latent["z1"]
         untran_z1 = untran_latent["z1"]
@@ -283,8 +317,15 @@ class HierarVAE(TOTALVAE):
         z1p = latent["z1p"]
         untran_z1p = untran_latent["z1p"]
 
+        z1a = latent["z1a"]
+        untran_z1a = untran_latent["z1a"]
+
 
         if n_samples > 1:
+
+            def unsqz(zt, n_s):
+                return zt.unsqueeze(0).expand((n_s, zt.size(0), zt.size(1)))
+            
             untran_z1 = qz1.sample((n_samples,))
             z1 = self.encoder.z_transformation(untran_z1)
 
@@ -296,6 +337,11 @@ class HierarVAE(TOTALVAE):
 
             untran_z1p = qz1p.sample((n_samples,))
             z1p = self.encoder.zp_transformation(untran_z1p)
+
+            untran_z1a = qz1a.sample((n_samples,))
+            z1a = self.encoder.za_transformation(untran_z1a)
+
+            libsize_acc = unsqz(libsize_acc, n_samples)
 
 
 
@@ -343,10 +389,12 @@ class HierarVAE(TOTALVAE):
             "untran_z1r": untran_z1r,
             "z1p": z1p,
             "untran_z1p": untran_z1p,
+            "z1a": z1a,
+            "untran_z1a": untran_z1a,
             "library_gene": library_gene,
             "untran_l": {},
             "kl": latent["kl"],
-
+            "libsize_acc": libsize_acc,
         }
 
     def loss(
@@ -379,13 +427,16 @@ class HierarVAE(TOTALVAE):
         """
 
         kl_div_z = inference_outputs["kl"]
+        libsize_acc = inference_outputs["libsize_acc"]
 
         px_ = generative_outputs["px_"]
         py_ = generative_outputs["py_"]
+        pa_ = generative_outputs["pa_"]
 
         x = tensors[REGISTRY_KEYS.X_KEY]
         batch_index = tensors[REGISTRY_KEYS.BATCH_KEY]
         y = tensors[REGISTRY_KEYS.PROTEIN_EXP_KEY]
+        z = tensors[REGISTRY_KEYS.ATAC_EXP_KEY] #Need to revisit
 
         if self.protein_batch_mask is not None:
             pro_batch_mask_minibatch = torch.zeros_like(y)
@@ -401,6 +452,8 @@ class HierarVAE(TOTALVAE):
         reconst_loss_gene, reconst_loss_protein = self.get_reconstruction_loss(
             x, y, px_, py_, pro_batch_mask_minibatch
         )
+
+        rl_accessibility = self.get_reconstruction_loss_accessibility(z, pa_, libsize_acc)
 
         # KL Divergence
 
