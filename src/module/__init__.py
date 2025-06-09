@@ -1,3 +1,3 @@
-from ._hierarvae import HierarVAE
+from ._multiHIVEvae import multiHIVEvae
 
-__all__ = ["HierarVAE"]
+__all__ = ["multiHIVEvae"]

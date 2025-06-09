@@ -1,3 +1,3 @@
-from ._hierarvi import HierarVI
+from ._multiHIVE import multiHIVE
 
-__all__ = ["HierarVI"]
+__all__ = ["multiHIVE"]

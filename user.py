@@ -9,7 +9,7 @@ import anndata as ad
 import scvi
 import matplotlib.pyplot as plt 
 
-from src.model import HierarVI
+from src.model import multiHIVE
 
 
 def start_script():
@@ -32,7 +32,7 @@ def start_script():
     )
 
 
-    HierarVI.setup_anndata(
+    multiHIVE.setup_anndata(
         adata,
         layer="counts",
         batch_key="batch",
@@ -40,7 +40,7 @@ def start_script():
     )
 
 
-    vae = HierarVI(adata, latent_distribution="normal", kl_dot_product=True, deep_network=True)
+    vae = multiHIVE(adata, latent_distribution="normal", kl_dot_product=True, deep_network=True)
     vae.train(max_epochs=200)
     adata.obsm["Z1_hierarVI"], adata.obsm["Z2_hierarVI"], adata.obsm["Z1r_hierarVI"], adata.obsm["Z1p_hierarVI"] = vae.get_latent_representation()
     adata.obsm['Zc_hierarVI'] = np.concatenate((adata.obsm["Z1_hierarVI"], adata.obsm["Z1r_hierarVI"], adata.obsm["Z1p_hierarVI"]), axis=1)

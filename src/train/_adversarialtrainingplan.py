@@ -1,29 +1,33 @@
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from scvi.nn import one_hot
 from scvi.train import AdversarialTrainingPlan
 from scvi.module import Classifier
 from typing import Callable, Dict, Iterable, Literal, Optional, Union
-from scvi.autotune._types import Tunable
 from scvi.module.base import BaseModuleClass
 from scvi import REGISTRY_KEYS
 import torch
-TorchOptimizerCreator = Callable[[Iterable[torch.Tensor]], torch.optim.Optimizer]
-from scvi.nn import one_hot
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+TorchOptimizerCreator = Callable[[
+    Iterable[torch.Tensor]], torch.optim.Optimizer]
+
 
 class AdversarialModifiedPlan(AdversarialTrainingPlan):
     def __init__(
             self,
             module: BaseModuleClass,
+            n_genes: int,
+            n_regions: int,
+            n_proteins: int,
             *,
-            optimizer: Tunable[Literal["Adam", "AdamW", "Custom"]] = "Adam",
+            optimizer: Literal["Adam", "AdamW", "Custom"] = "Adam",
             optimizer_creator: Optional[TorchOptimizerCreator] = None,
-            lr: Tunable[float] = 1e-3,
-            weight_decay: Tunable[float] = 1e-6,
-            n_steps_kl_warmup: Tunable[int] = None,
-            n_epochs_kl_warmup: Tunable[int] = 400,
-            reduce_lr_on_plateau: Tunable[bool] = False,
-            lr_factor: Tunable[float] = 0.6,
-            lr_patience: Tunable[int] = 30,
-            lr_threshold: Tunable[float] = 0.0,
+            lr: float = 1e-3,
+            weight_decay: float = 1e-6,
+            n_steps_kl_warmup: int = None,
+            n_epochs_kl_warmup: int = 400,
+            reduce_lr_on_plateau: bool = False,
+            lr_factor: float = 0.6,
+            lr_patience: int = 30,
+            lr_threshold: float = 0.0,
             lr_scheduler_metric: Literal[
                 "elbo_validation", "reconstruction_loss_validation", "kl_local_validation"
             ] = "elbo_validation",
@@ -32,6 +36,9 @@ class AdversarialModifiedPlan(AdversarialTrainingPlan):
             scale_adversarial_loss: Union[float, Literal["auto"]] = "auto",
             **loss_kwargs,
     ):
+        self.n_genes = n_genes
+        self.n_regions = n_regions
+        self.n_proteins = n_proteins
         super().__init__(
             module=module,
             optimizer=optimizer,
@@ -50,17 +57,16 @@ class AdversarialModifiedPlan(AdversarialTrainingPlan):
             scale_adversarial_loss=scale_adversarial_loss,
             **loss_kwargs,
         )
-
+        classifier_input = self.module.n_latent  # shared
+        if self.n_genes > 0:
+            classifier_input += self.module.n_latent  # genes
+        if self.n_proteins > 0:
+            classifier_input += self.module.n_latent  # proteins
+        if self.n_regions > 0:
+            classifier_input += self.module.n_latent  # atac
         if adversarial_classifier is True:
-            self.adversarial_classifier1 = Classifier(
-                n_input=self.module.n_latent,
-                n_hidden=32,
-                n_labels=self.n_output_classifier,
-                n_layers=2,
-                logits=True,
-            )
-            self.adversarial_classifier2 = Classifier(
-                n_input=self.module.n_latent,
+            self.adversarial_classifier = Classifier(
+                n_input=classifier_input,
                 n_hidden=32,
                 n_labels=self.n_output_classifier,
                 n_layers=2,
@@ -68,26 +74,23 @@ class AdversarialModifiedPlan(AdversarialTrainingPlan):
             )
         self.automatic_optimization = False
 
-    def loss_adversarial_classifier(self, z, zr, zp, batch_index, predict_true_class=True):
+    def loss_adversarial_classifier(self, z, batch_index, predict_true_class=True):
         """Loss for adversarial classifier."""
         n_classes = self.n_output_classifier
         cls_logits = torch.nn.LogSoftmax(dim=1)(self.adversarial_classifier(z))
-        cls_logits1 = torch.nn.LogSoftmax(dim=1)(self.adversarial_classifier1(zr))
-        cls_logits2 = torch.nn.LogSoftmax(dim=1)(self.adversarial_classifier2(zp))
 
         if predict_true_class:
-            cls_target = one_hot(batch_index, n_classes)
+            cls_target = torch.nn.functional.one_hot(
+                batch_index.squeeze(-1), n_classes)
         else:
-            one_hot_batch = one_hot(batch_index, n_classes)
+            one_hot_batch = torch.nn.functional.one_hot(
+                batch_index.squeeze(-1), n_classes)
             # place zeroes where true label is
             cls_target = (~one_hot_batch.bool()).float()
             cls_target = cls_target / (n_classes - 1)
 
         l_soft = cls_logits * cls_target
-        l_soft1 = cls_logits1 * cls_target
-        l_soft2 = cls_logits2 * cls_target
-
-        loss = -l_soft.sum(dim=1).mean()-l_soft1.sum(dim=1).mean()-l_soft2.sum(dim=1).mean()
+        loss = -l_soft.sum(dim=1).mean()
 
         return loss
 
@@ -115,10 +118,17 @@ class AdversarialModifiedPlan(AdversarialTrainingPlan):
         z = inference_outputs["z1"]
         z1r = inference_outputs["z1r"]
         z1p = inference_outputs["z1p"]
+        z1a = inference_outputs["z1a"]
+        z = torch.cat([z, z1r], axis=-1)
+        if z1p is not None:
+            z = torch.cat([z, z1p], axis=-1)
+        if z1a is not None:
+            z = torch.cat([z, z1a], axis=-1)
         loss = scvi_loss.loss
         # fool classifier if doing adversarial training
         if kappa > 0 and self.adversarial_classifier is not False:
-            fool_loss = self.loss_adversarial_classifier(z, z1r, z1p, batch_tensor, False)
+            fool_loss = self.loss_adversarial_classifier(
+                z, batch_tensor, False)
             loss += fool_loss * kappa
 
         self.log("train_loss", loss, on_epoch=True)
@@ -130,7 +140,8 @@ class AdversarialModifiedPlan(AdversarialTrainingPlan):
         # train adversarial classifier
         # this condition will not be met unless self.adversarial_classifier is not False
         if opt2 is not None:
-            loss = self.loss_adversarial_classifier(z.detach(), z1r.detach(), z1p.detach(), batch_tensor, True)
+            loss = self.loss_adversarial_classifier(
+                z.detach(), batch_tensor, True)
             loss *= kappa
             opt2.zero_grad()
             self.manual_backward(loss)
