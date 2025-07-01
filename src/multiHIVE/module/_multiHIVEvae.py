@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-import warnings
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Dict, Literal, Optional, Tuple, Union
 
 import torch
 from scvi import REGISTRY_KEYS
-from scvi.distributions import NegativeBinomial, ZeroInflatedNegativeBinomial, NegativeBinomialMixture, Poisson
+from scvi.distributions import (
+    NegativeBinomial,
+    ZeroInflatedNegativeBinomial,
+    NegativeBinomialMixture,
+    Poisson,
+)
 from scvi.module.base import BaseModuleClass, LossOutput, auto_move_data
 from torch import nn
 from torch.distributions import Normal
 from torch.distributions import kl_divergence as kl
-from scvi.module._peakvae import Decoder as DecoderPeakVI
 from scvi.data._constants import ADATA_MINIFY_TYPE
 from scvi.module._constants import MODULE_KEYS
 
@@ -18,7 +21,7 @@ from scvi.module import TOTALVAE
 
 from typing import Dict, Iterable, Literal, Optional, Tuple, Union
 
-from src.nn import Encoder, Decoder
+from multiHIVE.nn import Encoder, Decoder
 import numpy as np
 from scvi.nn import one_hot
 import torch.nn.functional as F
@@ -30,44 +33,40 @@ def _get_dict_if_none(param):
     return param
 
 
-class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
+class multiHIVEvae(BaseModuleClass):
     def __init__(
-            self,
-            n_input_genes: int = 0,
-            n_input_regions: int = 0,
-            n_input_proteins: int = 0,
-            n_batch: int = 0,
-            n_labels: int = 0,
-            n_hidden: int = 256,
-            n_latent: int = 20,
-            n_layers_encoder: int = 2,
-            n_layers_decoder: int = 2,
-            n_continuous_cov: int = 0,
-            n_cats_per_cov: Optional[Iterable[int]] = None,
-            dropout_rate: float = 0.2,
-            region_factors: bool = True,
-            gene_likelihood: Literal["zinb", "nb"] = "nb",
-            gene_dispersion: Literal["gene",
-                                     "gene-batch", "gene-label"] = "gene",
-            use_batch_norm: Literal["encoder",
-                                    "decoder", "none", "both"] = "both",
-            use_layer_norm: Literal["encoder",
-                                    "decoder", "none", "both"] = "none",
-            latent_distribution: Literal["normal", "ln"] = "normal",
-            deeply_inject_covariates: bool = False,
-            encode_covariates: bool = True,  # false not working TODO
-            protein_background_prior_mean: Optional[np.ndarray] = None,
-            protein_background_prior_scale: Optional[np.ndarray] = None,
-            protein_dispersion: Literal["protein",
-                                        "protein-batch", "protein-label"] = "protein",
-            protein_batch_mask: Dict[Union[str, int], np.ndarray] = None,
-            log_variational: bool = True,
-            library_log_means: Optional[np.ndarray] = None,
-            library_log_vars: Optional[np.ndarray] = None,
-            kl_dot_product: bool = False,
-            deep_network: bool = False,
-            use_size_factor_key: bool = False,
-            use_observed_lib_size: bool = True,
+        self,
+        n_input_genes: int = 0,
+        n_input_regions: int = 0,
+        n_input_proteins: int = 0,
+        n_batch: int = 0,
+        n_labels: int = 0,
+        n_hidden: int = 256,
+        n_latent: int = 20,
+        n_layers_encoder: int = 2,
+        n_layers_decoder: int = 2,
+        n_continuous_cov: int = 0,
+        n_cats_per_cov: Optional[Iterable[int]] = None,
+        dropout_rate: float = 0.2,
+        region_factors: bool = True,
+        gene_likelihood: Literal["zinb", "nb"] = "nb",
+        gene_dispersion: Literal["gene", "gene-batch", "gene-label"] = "gene",
+        use_batch_norm: Literal["encoder", "decoder", "none", "both"] = "both",
+        use_layer_norm: Literal["encoder", "decoder", "none", "both"] = "none",
+        latent_distribution: Literal["normal", "ln"] = "normal",
+        deeply_inject_covariates: bool = False,
+        encode_covariates: bool = True,  # false not working TODO
+        protein_background_prior_mean: Optional[np.ndarray] = None,
+        protein_background_prior_scale: Optional[np.ndarray] = None,
+        protein_dispersion: Literal["protein", "protein-batch", "protein-label"] = "protein",
+        protein_batch_mask: Dict[Union[str, int], np.ndarray] = None,
+        log_variational: bool = True,
+        library_log_means: Optional[np.ndarray] = None,
+        library_log_vars: Optional[np.ndarray] = None,
+        kl_dot_product: bool = False,
+        deep_network: bool = False,
+        use_size_factor_key: bool = False,
+        use_observed_lib_size: bool = True,
     ):
         super().__init__()
         # self.n_layers_encoder self.n_layers_decoder self.n_cats_per_cov self.n_continuous_cov
@@ -97,10 +96,8 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
                     "must provide library_log_means and library_log_vars."
                 )
 
-            self.register_buffer("library_log_means",
-                                 torch.from_numpy(library_log_means).float())
-            self.register_buffer("library_log_vars",
-                                 torch.from_numpy(library_log_vars).float())
+            self.register_buffer("library_log_means", torch.from_numpy(library_log_means).float())
+            self.register_buffer("library_log_vars", torch.from_numpy(library_log_vars).float())
 
         # parameters for prior on rate_back (background protein mean)
         if protein_background_prior_mean is None:
@@ -112,8 +109,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
                     torch.clamp(torch.randn(n_input_proteins, n_batch), -10, 1)
                 )
             else:
-                self.background_pro_alpha = torch.nn.Parameter(
-                    torch.randn(n_input_proteins))
+                self.background_pro_alpha = torch.nn.Parameter(torch.randn(n_input_proteins))
                 self.background_pro_log_beta = torch.nn.Parameter(
                     torch.clamp(torch.randn(n_input_proteins), -10, 1)
                 )
@@ -136,20 +132,16 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         elif self.gene_dispersion == "gene-batch":
             self.px_r = torch.nn.Parameter(torch.randn(n_input_genes, n_batch))
         elif self.gene_dispersion == "gene-label":
-            self.px_r = torch.nn.Parameter(
-                torch.randn(n_input_genes, n_labels))
+            self.px_r = torch.nn.Parameter(torch.randn(n_input_genes, n_labels))
         else:  # gene-cell
             pass
 
         if self.protein_dispersion == "protein":
-            self.py_r = torch.nn.Parameter(
-                2 * torch.rand(self.n_input_proteins))
+            self.py_r = torch.nn.Parameter(2 * torch.rand(self.n_input_proteins))
         elif self.protein_dispersion == "protein-batch":
-            self.py_r = torch.nn.Parameter(
-                2 * torch.rand(self.n_input_proteins, n_batch))
+            self.py_r = torch.nn.Parameter(2 * torch.rand(self.n_input_proteins, n_batch))
         elif self.protein_dispersion == "protein-label":
-            self.py_r = torch.nn.Parameter(
-                2 * torch.rand(self.n_input_proteins, n_labels))
+            self.py_r = torch.nn.Parameter(2 * torch.rand(self.n_input_proteins, n_labels))
         else:  # protein-cell
             pass
 
@@ -160,8 +152,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
 
         self.deeply_inject_covariates = deeply_inject_covariates
         if region_factors:
-            self.region_factors = torch.nn.Parameter(
-                torch.zeros(self.n_input_regions))
+            self.region_factors = torch.nn.Parameter(torch.zeros(self.n_input_regions))
 
         # accessibility
         # accessibility encoder
@@ -174,8 +165,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         n_input = n_input_genes + self.n_input_proteins + input_acc
         n_input_encoder = n_input + n_continuous_cov * encode_covariates
 
-        cat_list = [n_batch] + \
-            list([] if n_cats_per_cov is None else n_cats_per_cov)
+        cat_list = [n_batch] + list([] if n_cats_per_cov is None else n_cats_per_cov)
         encoder_cat_list = cat_list if encode_covariates else None
 
         if n_hidden is None:
@@ -198,11 +188,10 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
             distribution=latent_distribution,
             kl_dot_product=kl_dot_product,
             deep_network=deep_network,
-            n_cats_per_cov=n_cats_per_cov
-
+            n_cats_per_cov=n_cats_per_cov,
         )
         self.decoder = Decoder(
-            n_input=n_latent + n_continuous_cov,
+            n_input=n_latent,
             n_output_genes=n_input_genes,
             n_output_proteins=self.n_input_proteins,
             n_output_regions=self.n_input_regions,
@@ -247,9 +236,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         type
             tensors of dispersions of the negative binomial distribution
         """
-        outputs = self.inference(
-            x, y, batch_index=batch_index, label=label, n_samples=n_samples
-        )
+        outputs = self.inference(x, y, batch_index=batch_index, label=label, n_samples=n_samples)
         px_r = outputs["px_"]["r"]
         py_r = None
         if outputs["py_"]:
@@ -261,28 +248,20 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         rl = 0.0
         if self.gene_likelihood == "zinb":
             rl = (
-                -ZeroInflatedNegativeBinomial(
-                    mu=px_rate, theta=px_r, zi_logits=px_dropout
-                )
+                -ZeroInflatedNegativeBinomial(mu=px_rate, theta=px_r, zi_logits=px_dropout)
                 .log_prob(x)
                 .sum(dim=-1)
             )
         elif self.gene_likelihood == "nb":
-            rl = -NegativeBinomial(mu=px_rate,
-                                   theta=px_r).log_prob(x).sum(dim=-1)
+            rl = -NegativeBinomial(mu=px_rate, theta=px_r).log_prob(x).sum(dim=-1)
         elif self.gene_likelihood == "poisson":
             rl = -Poisson(px_rate).log_prob(x).sum(dim=-1)
         return rl
 
     def get_reconstruction_loss_accessibility(self, x, p, d):
         """Computes the reconstruction loss for the accessibility data."""
-        reg_factor = (
-            torch.sigmoid(
-                self.region_factors) if self.region_factors is not None else 1
-        )
-        return torch.nn.BCELoss(reduction="none")(
-            p * d * reg_factor, (x > 0).float()
-        ).sum(dim=-1)
+        reg_factor = torch.sigmoid(self.region_factors) if self.region_factors is not None else 1
+        return torch.nn.BCELoss(reduction="none")(p * d * reg_factor, (x > 0).float()).sum(dim=-1)
 
     def get_reconstruction_loss_protein(self, y, py_, pro_batch_mask_minibatch=None):
         """Get the reconstruction loss for protein data."""
@@ -314,14 +293,11 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         x = tensors.get(REGISTRY_KEYS.X_KEY, None)
         x_rna = x[:, : self.n_input_genes]
         if self.n_input_regions == 0:
-            x_atac = torch.zeros(
-                x.shape[0], 1, device=x.device, requires_grad=False)
+            x_atac = torch.zeros(x.shape[0], 1, device=x.device, requires_grad=False)
         else:
-            x_atac = x[:, self.n_input_genes: (
-                self.n_input_genes + self.n_input_regions)]
+            x_atac = x[:, self.n_input_genes : (self.n_input_genes + self.n_input_regions)]
         if self.n_input_proteins == 0:
-            y = torch.zeros(
-                x.shape[0], 1, device=x.device, requires_grad=False)
+            y = torch.zeros(x.shape[0], 1, device=x.device, requires_grad=False)
         else:
             y = tensors[REGISTRY_KEYS.PROTEIN_EXP_KEY]
 
@@ -331,7 +307,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         input_dict = dict(
             x=x_rna,
             y=y,
-            z=x_atac,
+            c=x_atac,
             batch_index=batch_index,
             cont_covs=cont_covs,
             cat_covs=cat_covs,
@@ -340,15 +316,15 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
 
     @auto_move_data
     def inference(
-            self,
-            x: torch.Tensor,
-            y: torch.Tensor,
-            z: torch.Tensor,  # atac
-            batch_index: Optional[torch.Tensor] = None,
-            label: Optional[torch.Tensor] = None,
-            n_samples=1,
-            cont_covs=None,
-            cat_covs=None,
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        c: torch.Tensor,  # atac
+        batch_index: Optional[torch.Tensor] = None,
+        label: Optional[torch.Tensor] = None,
+        n_samples=1,
+        cont_covs=None,
+        cat_covs=None,
     ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
         """Internal helper function to compute necessary inference quantities.
 
@@ -384,7 +360,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         """
         x_ = x
         y_ = y
-        z_ = z
+        c_ = c
 
         library_gene = x.sum(1).unsqueeze(1)
 
@@ -393,28 +369,35 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
             if self.n_input_proteins > 0:
                 y_ = torch.log(1 + y_)
             if self.n_input_regions > 0:
-                z_ = torch.log(1 + z_)
+                c_ = torch.log(1 + c_)
 
         if cont_covs is not None and self.encode_covariates is True:
             if self.n_input_proteins > 0 and self.n_input_regions > 0:
-                encoder_input = torch.cat((x_, y_, z_, cont_covs), dim=-1)
+                encoder_input = torch.cat((x_, y_, c_, cont_covs), dim=-1)
             elif self.n_input_proteins > 0:
                 encoder_input = torch.cat((x_, y_, cont_covs), dim=-1)
             elif self.n_input_regions > 0:
-                encoder_input = torch.cat((x_, z_, cont_covs), dim=-1)
+                encoder_input = torch.cat((x_, c_, cont_covs), dim=-1)
         else:
             if self.n_input_proteins > 0 and self.n_input_regions > 0:
-                encoder_input = torch.cat((x_, y_, z,), dim=-1)
+                encoder_input = torch.cat(
+                    (
+                        x_,
+                        y_,
+                        c_,
+                    ),
+                    dim=-1,
+                )
             elif self.n_input_proteins > 0:
                 encoder_input = torch.cat((x_, y_), dim=-1)
             elif self.n_input_regions > 0:
-                encoder_input = torch.cat((x_, z_), dim=-1)
+                encoder_input = torch.cat((x_, c_), dim=-1)
         if cat_covs is not None and self.encode_covariates is True:
             categorical_input = torch.split(cat_covs, 1, dim=1)
         else:
             categorical_input = ()
         qz1, qz2, latent, untran_latent, qz1r, qz1p, qz1a, libsize_acc = self.encoder(
-            x_, y_, z_, encoder_input, batch_index, *categorical_input
+            x_, y_, c_, encoder_input, batch_index, *categorical_input
         )
 
         z1 = latent["z1"]
@@ -524,9 +507,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         cat_covs = tensors[cat_key] if cat_key in tensors.keys() else None
 
         size_factor_key = REGISTRY_KEYS.SIZE_FACTOR_KEY
-        size_factor = (
-            tensors[size_factor_key] if size_factor_key in tensors.keys() else None
-        )
+        size_factor = tensors[size_factor_key] if size_factor_key in tensors.keys() else None
 
         return {
             "z": z,
@@ -543,26 +524,24 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
 
     @auto_move_data
     def generative(
-            self,
-            z: torch.Tensor,
-            zr: torch.Tensor,
-            zp: Optional[torch.Tensor],
-            za: Optional[torch.Tensor],
-            library_gene: torch.Tensor,
-            batch_index: torch.Tensor,
-            label: torch.Tensor,
-            cont_covs=None,
-            cat_covs=None,
-            size_factor=None,
-            transform_batch: Optional[int] = None,
+        self,
+        z: torch.Tensor,
+        zr: torch.Tensor,
+        zp: Optional[torch.Tensor],
+        za: Optional[torch.Tensor],
+        library_gene: torch.Tensor,
+        batch_index: torch.Tensor,
+        label: torch.Tensor,
+        cont_covs=None,
+        cat_covs=None,
+        size_factor=None,
+        transform_batch: Optional[int] = None,
     ) -> Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]:
         """Run the generative step."""
         if cont_covs is None:
             decoder_input = z
         elif z.dim() != cont_covs.dim():
-            decoder_input = torch.cat(
-                [z, cont_covs.unsqueeze(0).expand(z.size(0), -1, -1)], dim=-1
-            )
+            decoder_input = torch.cat([z, cont_covs.unsqueeze(0).expand(z.size(0), -1, -1)], dim=-1)
         else:
             decoder_input = torch.cat([z, cont_covs], dim=-1)
 
@@ -609,15 +588,13 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         )
 
     def loss(
-            self,
-            tensors,
-            inference_outputs,
-            generative_outputs,
-            pro_recons_weight=1.0,  # double check these defaults
-            kl_weight=1.0,
-    ) -> Tuple[
-        torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor
-    ]:
+        self,
+        tensors,
+        inference_outputs,
+        generative_outputs,
+        pro_recons_weight=1.0,  # double check these defaults
+        kl_weight=1.0,
+    ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
         """Returns the reconstruction loss and the Kullback divergences.
 
         Parameters
@@ -648,10 +625,9 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         batch_index = tensors[REGISTRY_KEYS.BATCH_KEY]
         x_rna = x[:, : self.n_input_genes]
 
-        z = None
+        c = None
         if self.n_input_regions > 0:
-            z = x[:, self.n_input_genes: (
-                self.n_input_genes + self.n_input_regions)]
+            c = x[:, self.n_input_genes : (self.n_input_genes + self.n_input_regions)]
         y = None
         if self.n_input_proteins > 0:
             y = tensors[REGISTRY_KEYS.PROTEIN_EXP_KEY]
@@ -660,8 +636,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
                 for b in torch.unique(batch_index):
                     b_indices = (batch_index == b).reshape(-1)
                     pro_batch_mask_minibatch[b_indices] = torch.tensor(
-                        self.protein_batch_mask[str(
-                            int(b.item()))].astype(np.float32),
+                        self.protein_batch_mask[str(int(b.item()))].astype(np.float32),
                         device=y.device,
                     )
             else:
@@ -670,32 +645,31 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
 
         if y is not None:
             reconst_loss_protein = self.get_reconstruction_loss_protein(
-                y, py_, pro_batch_mask_minibatch)
+                y, py_, pro_batch_mask_minibatch
+            )
         else:
-            reconst_loss_protein = torch.zeros(
-                x.shape[0], device=x.device, requires_grad=False)
+            reconst_loss_protein = torch.zeros(x.shape[0], device=x.device, requires_grad=False)
 
         reconst_loss_gene = self.get_reconstruction_loss_expression(
             x, px_["rate"], px_["r"], px_["dropout"]
         )
-        if z is not None:
+        if c is not None:
             reconst_loss_accessibility = self.get_reconstruction_loss_accessibility(
-                z, pa_["pa"], libsize_acc)
+                c, pa_["pa"], libsize_acc
+            )
         else:
             reconst_loss_accessibility = torch.zeros(
-                x.shape[0], device=x.device, requires_grad=False)
+                x.shape[0], device=x.device, requires_grad=False
+            )
 
         # KL Divergence
 
-        kl_div_l_gene = torch.zeros(
-            x.shape[0], device=x.device, requires_grad=False)
-        kl_div_back_pro = torch.zeros(
-            x.shape[0], device=x.device, requires_grad=False)
+        kl_div_l_gene = torch.zeros(x.shape[0], device=x.device, requires_grad=False)
+        kl_div_back_pro = torch.zeros(x.shape[0], device=x.device, requires_grad=False)
 
         if y is not None:
             kl_div_back_pro_full = kl(
-                Normal(py_["back_alpha"], py_[
-                       "back_beta"]), self.back_mean_prior
+                Normal(py_["back_alpha"], py_["back_beta"]), self.back_mean_prior
             )
 
             if pro_batch_mask_minibatch is not None:
@@ -720,7 +694,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
         reconst_losses = {
             "reconst_loss_gene": reconst_loss_gene,
             "reconst_loss_protein": reconst_loss_protein,
-            "reconst_loss_accessibility": reconst_loss_accessibility
+            "reconst_loss_accessibility": reconst_loss_accessibility,
         }
         kl_local = {
             "kl_div_z": kl_div_z,
@@ -728,9 +702,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
             "kl_div_back_pro": kl_div_back_pro,
         }
 
-        return LossOutput(
-            loss=loss, reconstruction_loss=reconst_losses, kl_local=kl_local
-        )
+        return LossOutput(loss=loss, reconstruction_loss=reconst_losses, kl_local=kl_local)
 
     @torch.inference_mode()
     def sample(self, tensors, n_samples=1, swap_latent=False):
@@ -749,7 +721,7 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
 
         px_ = generative_outputs["px_"]
         py_ = generative_outputs["py_"]
-        pa_ = generative_outputs["pa_"] #TODO
+        pa_ = generative_outputs["pa_"]  # TODO
 
         rna_dist = NegativeBinomial(mu=px_["rate"], theta=px_["r"])
         protein_dist = NegativeBinomialMixture(
@@ -765,19 +737,16 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
 
     @auto_move_data
     def forward(
-            self,
-            tensors,
-            get_inference_input_kwargs: dict | None = None,
-            get_generative_input_kwargs: dict | None = None,
-            inference_kwargs: dict | None = None,
-            generative_kwargs: dict | None = None,
-            loss_kwargs: dict | None = None,
-            compute_loss=True,
-            swap=False,
-    ) -> (
-            tuple[torch.Tensor, torch.Tensor]
-            | tuple[torch.Tensor, torch.Tensor, LossOutput]
-    ):
+        self,
+        tensors,
+        get_inference_input_kwargs: dict | None = None,
+        get_generative_input_kwargs: dict | None = None,
+        inference_kwargs: dict | None = None,
+        generative_kwargs: dict | None = None,
+        loss_kwargs: dict | None = None,
+        compute_loss=True,
+        swap=False,
+    ) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, LossOutput]:
         """Forward pass through the network.
 
         Parameters
@@ -812,44 +781,40 @@ class multiHIVEvae(BaseModuleClass):  # TODO remove dependency
 
 
 def _generic_forward(
-        module,
-        tensors,
-        inference_kwargs,
-        generative_kwargs,
-        loss_kwargs,
-        get_inference_input_kwargs,
-        get_generative_input_kwargs,
-        compute_loss,
-        swap=False,
+    module,
+    tensors,
+    inference_kwargs,
+    generative_kwargs,
+    loss_kwargs,
+    get_inference_input_kwargs,
+    get_generative_input_kwargs,
+    compute_loss,
+    swap=False,
 ):
     """Core of the forward call shared by PyTorch- and Jax-based modules."""
     inference_kwargs = _get_dict_if_none(inference_kwargs)
     generative_kwargs = _get_dict_if_none(generative_kwargs)
     loss_kwargs = _get_dict_if_none(loss_kwargs)
     get_inference_input_kwargs = _get_dict_if_none(get_inference_input_kwargs)
-    get_generative_input_kwargs = _get_dict_if_none(
-        get_generative_input_kwargs)
+    get_generative_input_kwargs = _get_dict_if_none(get_generative_input_kwargs)
     if not ("latent_qzm" in tensors.keys() and "latent_qzv" in tensors.keys()):
         # Remove full_forward_pass if not minified model
         get_inference_input_kwargs.pop("full_forward_pass", None)
 
-    inference_inputs = module._get_inference_input(
-        tensors, **get_inference_input_kwargs
-    )
-    inference_outputs = module.inference(
-        **inference_inputs, **inference_kwargs)
+    inference_inputs = module._get_inference_input(tensors, **get_inference_input_kwargs)
+    inference_outputs = module.inference(**inference_inputs, **inference_kwargs)
     if swap:
-        inference_outputs['z1'], inference_outputs['z2'] = inference_outputs['z2'], inference_outputs['z1']
+        inference_outputs["z1"], inference_outputs["z2"] = (
+            inference_outputs["z2"],
+            inference_outputs["z1"],
+        )
 
     generative_inputs = module._get_generative_input(
         tensors, inference_outputs, **get_generative_input_kwargs
     )
-    generative_outputs = module.generative(
-        **generative_inputs, **generative_kwargs)
+    generative_outputs = module.generative(**generative_inputs, **generative_kwargs)
     if compute_loss:
-        losses = module.loss(
-            tensors, inference_outputs, generative_outputs, **loss_kwargs
-        )
+        losses = module.loss(tensors, inference_outputs, generative_outputs, **loss_kwargs)
         return inference_outputs, generative_outputs, losses
     else:
         return inference_outputs, generative_outputs

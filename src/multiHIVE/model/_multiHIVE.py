@@ -1,6 +1,6 @@
 from __future__ import annotations
-from src.train import AdversarialModifiedPlan
-from src.module import multiHIVEvae
+from multiHIVE.train import AdversarialModifiedPlan
+from multiHIVE.module import multiHIVEvae
 from scvi.data.fields import (
     CategoricalJointObsField,
     CategoricalObsField,
@@ -25,7 +25,7 @@ from anndata import AnnData
 from scvi import REGISTRY_KEYS, settings
 from scvi.data import AnnDataManager, fields
 from scvi.data._constants import ADATA_MINIFY_TYPE
-from scvi.data._utils import _check_nonnegative_integers, _get_adata_minify_type
+from scvi.data._utils import _check_nonnegative_integers
 from scvi.dataloaders import DataSplitter
 from scvi.model._utils import (
     _get_batch_code_from_category,
@@ -36,15 +36,11 @@ from scvi.model._utils import (
     use_distributed_sampler,
 )
 from scvi.model.base._de_core import _de_core
-from scvi.module import TOTALVAE
-from scvi.train import AdversarialTrainingPlan, TrainRunner
+from scvi.train import TrainRunner
 from scvi.utils._docstrings import de_dsp, devices_dsp, setup_anndata_dsp
 
 from scvi.model.base import (
     ArchesMixin,
-    BaseMinifiedModeModelClass,
-    BaseMudataMinifiedModeModelClass,
-    RNASeqMixin,
     BaseModelClass,
     UnsupervisedTrainingMixin,
     VAEMixin,
@@ -69,36 +65,8 @@ logger = logging.getLogger(__name__)
 
 
 class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin):
-    """Multigrate model.
-
-    :param adata:
-        AnnData object that has been registered via :meth:`~multigrate.model.MultiVAE.setup_anndata`.
-    :param integrate_on:
-        One of the categorical covariates refistered with :math:`~multigrate.model.MultiVAE.setup_anndata` to integrate on. The latent space then will be disentangled from this covariate. If `None`, no integration is performed.
-    :param condition_encoders:
-        Whether to concatentate covariate embeddings to the first layer of the encoders. Default is `False`.
-    :param condition_decoders:
-        Whether to concatentate covariate embeddings to the first layer of the decoders. Default is `True`.
-    :param normalization:
-        What normalization to use; has to be one of `batch` or `layer`. Default is `layer`.
-    :param z_dim:
-        Dimensionality of the latent space. Default is 15.
-    :param losses:
-        Which losses to use for each modality. Has to be the same length as the number of modalities. Default is `MSE` for all modalities.
-    :param dropout:
-        Dropout rate. Default is 0.2.
-    :param cond_dim:
-        Dimensionality of the covariate embeddings. Default is 10.
-    :param loss_coefs:
-        Loss coeficients for the different losses in the model. Default is 1 for all.
-    :param n_layers_encoders:
-        Number of layers for each encoder. Default is 2 for all modalities. Has to be the same length as the number of modalities.
-    :param n_layers_decoders:
-        Number of layers for each decoder. Default is 2 for all modalities. Has to be the same length as the number of modalities.
-    :param n_hidden_encoders:
-        Number of nodes for each hidden layer in the encoders. Default is 32.
-    :param n_hidden_decoders:
-        Number of nodes for each hidden layer in the decoders. Default is 32.
+    """
+    multiHIVE model.
     """
 
     _module_cls = multiHIVEvae
@@ -107,35 +75,30 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
     _train_runner_cls = TrainRunner
 
     def __init__(
-            self,
-            adata: AnnData,
-            n_genes: int,
-            n_regions: int,
-            n_proteins: int,
-            n_latent: int = 20,
-            n_hidden: Optional[int] = None,
-            n_layers_encoder: int = 2,
-            n_layers_decoder: int = 2,
-            dropout_rate: float = 0.1,
-            region_factors: bool = True,
-            use_batch_norm: Literal["encoder",
-                                    "decoder", "none", "both"] = "both",
-            use_layer_norm: Literal["encoder",
-                                    "decoder", "none", "both"] = "none",
-            gene_dispersion: Literal["gene", "gene-batch",
-                                     "gene-label", "gene-cell"] = "gene",
-            protein_dispersion: Literal["protein",
-                                        "protein-batch", "protein-label"] = "protein",
-            gene_likelihood: Literal["zinb", "nb"] = "nb",
-            latent_distribution: Literal["normal", "ln"] = "normal",
-            empirical_protein_background_prior: Optional[bool] = None,
-            override_missing_proteins: bool = False,
-            deeply_inject_covariates: bool = False,
-            encode_covariates: bool = True,  # False error TODO
-            fully_paired: bool = False,
-            kl_dot_product: bool = False,
-
-            **model_kwargs,
+        self,
+        adata: AnnData,
+        n_genes: int,
+        n_regions: int,
+        n_proteins: int,
+        n_latent: int = 20,
+        n_hidden: Optional[int] = None,
+        n_layers_encoder: int = 2,
+        n_layers_decoder: int = 2,
+        dropout_rate: float = 0.1,
+        region_factors: bool = True,
+        use_batch_norm: Literal["encoder", "decoder", "none", "both"] = "both",
+        use_layer_norm: Literal["encoder", "decoder", "none", "both"] = "none",
+        gene_dispersion: Literal["gene", "gene-batch", "gene-label", "gene-cell"] = "gene",
+        protein_dispersion: Literal["protein", "protein-batch", "protein-label"] = "protein",
+        gene_likelihood: Literal["zinb", "nb"] = "nb",
+        latent_distribution: Literal["normal", "ln"] = "normal",
+        empirical_protein_background_prior: Optional[bool] = None,
+        override_missing_proteins: bool = False,
+        deeply_inject_covariates: bool = False,
+        encode_covariates: bool = True,  # False error TODO
+        fully_paired: bool = False,
+        kl_dot_product: bool = False,
+        **model_kwargs,
     ):
         super().__init__(adata)
         self.n_genes = n_genes
@@ -143,29 +106,20 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         self.n_proteins = n_proteins
 
         if n_genes is None or n_regions is None:
-            assert isinstance(adata, MuData), (
-                "n_genes and n_regions must be provided if using AnnData"
-            )
+            assert isinstance(
+                adata, MuData
+            ), "n_genes and n_regions must be provided if using AnnData"
             n_genes = self.summary_stats.get("n_vars", 0)
             n_regions = self.summary_stats.get("n_atac", 0)
 
         prior_mean, prior_scale = None, None
         n_cats_per_cov = (
-            self.adata_manager.get_state_registry(
-                REGISTRY_KEYS.CAT_COVS_KEY
-            ).n_cats_per_key
+            self.adata_manager.get_state_registry(REGISTRY_KEYS.CAT_COVS_KEY).n_cats_per_key
             if REGISTRY_KEYS.CAT_COVS_KEY in self.adata_manager.data_registry
             else []
         )
 
-        use_size_factor_key = (
-            REGISTRY_KEYS.SIZE_FACTOR_KEY in self.adata_manager.data_registry
-        )
-
-        # if "n_proteins" in self.summary_stats:
-        #     n_proteins = self.summary_stats.n_proteins
-        # else:
-        #     n_proteins = 0
+        use_size_factor_key = REGISTRY_KEYS.SIZE_FACTOR_KEY in self.adata_manager.data_registry
         if self.n_proteins > 0:
             self.protein_state_registry = self.adata_manager.get_state_registry(
                 REGISTRY_KEYS.PROTEIN_EXP_KEY
@@ -203,14 +157,10 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             prior_mean, prior_scale = None, None
 
         n_batch = self.summary_stats.n_batch
-        use_size_factor_key = (
-            REGISTRY_KEYS.SIZE_FACTOR_KEY in self.adata_manager.data_registry
-        )
+        use_size_factor_key = REGISTRY_KEYS.SIZE_FACTOR_KEY in self.adata_manager.data_registry
         library_log_means, library_log_vars = None, None
         if not use_size_factor_key:
-            library_log_means, library_log_vars = _init_library_size(
-                self.adata_manager, n_batch
-            )
+            library_log_means, library_log_vars = _init_library_size(self.adata_manager, n_batch)
 
         self.module = self._module_cls(
             n_input_genes=n_genes,
@@ -222,8 +172,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             n_latent=n_latent,
             n_layers_encoder=n_layers_encoder,
             n_layers_decoder=n_layers_decoder,
-            n_continuous_cov=self.summary_stats.get(
-                "n_extra_continuous_covs", 0),
+            n_continuous_cov=self.summary_stats.get("n_extra_continuous_covs", 0),
             n_cats_per_cov=n_cats_per_cov,
             dropout_rate=dropout_rate,
             region_factors=region_factors,
@@ -344,11 +293,11 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         **kwargs
             Other keyword args for :class:`~scvi.train.Trainer`.
         """
+
         if adversarial_classifier is None:
             adversarial_classifier = self._use_adversarial_classifier
         n_steps_kl_warmup = (
-            n_steps_kl_warmup if n_steps_kl_warmup is not None else int(
-                0.75 * self.adata.n_obs)
+            n_steps_kl_warmup if n_steps_kl_warmup is not None else int(0.75 * self.adata.n_obs)
         )
         if reduce_lr_on_plateau:
             check_val_every_n_epoch = 1
@@ -377,15 +326,17 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             validation_size=validation_size,
             shuffle_set_split=shuffle_set_split,
             batch_size=batch_size,
-            distributed_sampler=use_distributed_sampler(
-                kwargs.get("strategy", None)),
+            distributed_sampler=use_distributed_sampler(kwargs.get("strategy", None)),
             external_indexing=external_indexing,
             **datasplitter_kwargs,
         )
-        training_plan = self._training_plan_cls(self.module, n_genes=self.n_genes,
-                                                n_proteins=self.n_proteins,
-                                                n_regions=self.n_regions,
-                                                **plan_kwargs)
+        training_plan = self._training_plan_cls(
+            self.module,
+            n_genes=self.n_genes,
+            n_proteins=self.n_proteins,
+            n_regions=self.n_regions,
+            **plan_kwargs,
+        )
         runner = self._train_runner_cls(
             self,
             training_plan=training_plan,
@@ -427,9 +378,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         self._check_if_trained(warn=False)
 
         adata = self._validate_anndata(adata)
-        post = self._make_data_loader(
-            adata=adata, indices=indices, batch_size=batch_size
-        )
+        post = self._make_data_loader(adata=adata, indices=indices, batch_size=batch_size)
 
         libraries = []
         for tensors in post:
@@ -504,12 +453,9 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             indices = np.arange(adata.n_obs)
         if n_samples_overall is not None:
             indices = np.random.choice(indices, n_samples_overall)
-        scdl = self._make_data_loader(
-            adata=adata, indices=indices, batch_size=batch_size
-        )
+        scdl = self._make_data_loader(adata=adata, indices=indices, batch_size=batch_size)
 
-        transform_batch = _get_batch_code_from_category(
-            adata_manager, transform_batch)
+        transform_batch = _get_batch_code_from_category(adata_manager, transform_batch)
 
         if gene_list is None:
             gene_mask = slice(None)
@@ -523,9 +469,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             for batch in transform_batch:
                 if batch is not None:
                     batch_indices = tensors[REGISTRY_KEYS.BATCH_KEY]
-                    tensors[REGISTRY_KEYS.BATCH_KEY] = (
-                        torch.ones_like(batch_indices) * batch
-                    )
+                    tensors[REGISTRY_KEYS.BATCH_KEY] = torch.ones_like(batch_indices) * batch
                 _, generative_outputs = self.module.forward(
                     tensors=tensors,
                     inference_kwargs=dict(n_samples=n_samples),
@@ -611,16 +555,13 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         Otherwise, shape is `(cells, genes)`. In this case, return type is :class:`~pandas.DataFrame` unless `return_numpy` is True.
         """
         adata = self._validate_anndata(adata)
-        post = self._make_data_loader(
-            adata=adata, indices=indices, batch_size=batch_size
-        )
+        post = self._make_data_loader(adata=adata, indices=indices, batch_size=batch_size)
 
         if protein_list is None:
             protein_mask = slice(None)
         else:
             all_proteins = self.protein_state_registry.column_names
-            protein_mask = [
-                True if p in protein_list else False for p in all_proteins]
+            protein_mask = [True if p in protein_list else False for p in all_proteins]
 
         if n_samples > 1 and return_mean is False:
             if return_numpy is False:
@@ -635,9 +576,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         if not isinstance(transform_batch, IterableClass):
             transform_batch = [transform_batch]
 
-        transform_batch = _get_batch_code_from_category(
-            self.adata_manager, transform_batch
-        )
+        transform_batch = _get_batch_code_from_category(self.adata_manager, transform_batch)
         for tensors in post:
             y = tensors[REGISTRY_KEYS.PROTEIN_EXP_KEY]
             py_mixing = torch.zeros_like(y[..., protein_mask])
@@ -734,17 +673,27 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         include_protein_background: bool = False,
         **kwargs,
     ) -> pd.DataFrame:
-        r"""
-        \
-
-        A unified method for differential expression analysis.
-
+        r"""A unified method for differential expression analysis.
 
         Implements `"vanilla"` DE :cite:p:`Lopez18`. and `"change"` mode DE :cite:p:`Boyeau19`.
 
         Parameters
         ----------
-        {doc_differential_expression}
+        %(de_adata)s
+        %(de_groupby)s
+        %(de_group1)s
+        %(de_group2)s
+        %(de_idx1)s
+        %(de_idx2)s
+        %(de_mode)s
+        %(de_delta)s
+        %(de_batch_size)s
+        %(de_all_stats)s
+        %(de_batch_correction)s
+        %(de_batchid1)s
+        %(de_batchid2)s
+        %(de_fdr_target)s
+        %(de_silent)s
         protein_prior_count
             Prior count added to protein expression before LFC computation
         scale_protein
@@ -754,6 +703,11 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             that determines if expression is from foreground/background.
         include_protein_background
             Include the protein background component as part of the protein expression
+        use_field
+            By default uses protein and RNA field disable here to perform only RNA or protein DE.
+        pseudocounts
+            pseudocount offset used for the mode `change`.
+            When None, observations from non-expressed genes are used to estimate its value.
         **kwargs
             Keyword args for :meth:`scvi.model.base.DifferentialComputation.get_bayes_factors`
 
@@ -761,6 +715,8 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         -------
         Differential expression DataFrame.
         """
+
+
         adata = self._validate_anndata(adata)
         adata_manager = self.get_anndata_manager(adata, required=True)
         model_fn = partial(
@@ -802,15 +758,15 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
 
     @torch.inference_mode()
     def posterior_predictive_sample(
-            self,
-            adata: Optional[AnnData] = None,
-            indices: Optional[Sequence[int]] = None,
-            n_samples: int = 1,
-            batch_size: Optional[int] = None,
-            gene_list: Optional[Sequence[str]] = None,
-            protein_list: Optional[Sequence[str]] = None,
-            atac_list: Optional[Sequence[str]] = None,
-            swap_latent=False,
+        self,
+        adata: Optional[AnnData] = None,
+        indices: Optional[Sequence[int]] = None,
+        n_samples: int = 1,
+        batch_size: Optional[int] = None,
+        gene_list: Optional[Sequence[str]] = None,
+        protein_list: Optional[Sequence[str]] = None,
+        atac_list: Optional[Sequence[str]] = None,
+        swap_latent=False,
     ) -> np.ndarray:
         r"""Generate observation samples from the posterior predictive distribution.
 
@@ -848,21 +804,18 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             gene_mask = slice(None)
         else:
             all_genes = _get_var_names_from_manager(adata_manager)
-            gene_mask = [
-                True if gene in gene_list else False for gene in all_genes]
+            gene_mask = [True if gene in gene_list else False for gene in all_genes]
         if protein_list is None:
             protein_mask = slice(None)
         else:
             all_proteins = self.protein_state_registry.column_names
-            protein_mask = [
-                True if p in protein_list else False for p in all_proteins]
+            protein_mask = [True if p in protein_list else False for p in all_proteins]
 
         if atac_list is None:
             atac_mask = slice(None)
         else:
             all_atac = self.atac_state_registry.column_names
-            atac_mask = [
-                True if atac in atac_list else False for atac in all_atac]
+            atac_mask = [True if atac in atac_list else False for atac in all_atac]
 
         scdl = self._make_data_loader(  # Need to implement in hierarVAE to return atac in scdl. Currently inherited from totalVAE in scvi code
             adata=adata, indices=indices, batch_size=batch_size
@@ -876,8 +829,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             rna_sample = rna_sample[..., gene_mask]
             protein_sample = protein_sample[..., protein_mask]
             atac_sample = protein_sample[..., atac_mask]
-            data = torch.cat([rna_sample, protein_sample,
-                             atac_sample], dim=-1).numpy()
+            data = torch.cat([rna_sample, protein_sample, atac_sample], dim=-1).numpy()
 
             scdl_list += [data]
             if n_samples > 1:
@@ -916,9 +868,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             int of which batch to condition on for all cells
         """
         adata = self._validate_anndata(adata)
-        scdl = self._make_data_loader(
-            adata=adata, indices=indices, batch_size=batch_size
-        )
+        scdl = self._make_data_loader(adata=adata, indices=indices, batch_size=batch_size)
 
         scdl_list = []
         for tensors in scdl:
@@ -944,8 +894,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             pi = 1 / (1 + torch.exp(-py_["mixing"]))
             mixing_sample = torch.distributions.Bernoulli(pi).sample()
             protein_rate = py_["rate_fore"]
-            rate = torch.cat(
-                (rna_size_factor * px_["scale"], protein_rate), dim=-1)
+            rate = torch.cat((rna_size_factor * px_["scale"], protein_rate), dim=-1)
             if len(px_["r"].size()) == 2:
                 px_dispersion = px_["r"]
             else:
@@ -963,9 +912,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             l_train = torch.distributions.Gamma(r, (1 - p) / p).sample()
             data = l_train.cpu().numpy()
             # make background 0
-            data[:, :, x.shape[1]:] = (
-                data[:, :, x.shape[1]:] * (1 - mixing_sample).cpu().numpy()
-            )
+            data[:, :, x.shape[1] :] = data[:, :, x.shape[1] :] * (1 - mixing_sample).cpu().numpy()
             scdl_list += [data]
 
             scdl_list[-1] = np.transpose(scdl_list[-1], (1, 2, 0))
@@ -1036,19 +983,14 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
                 rna_size_factor=rna_size_factor,
                 transform_batch=b,
             )
-            flattened = np.zeros(
-                (denoised_data.shape[0] * n_samples, denoised_data.shape[1])
-            )
+            flattened = np.zeros((denoised_data.shape[0] * n_samples, denoised_data.shape[1]))
             for i in range(n_samples):
-                flattened[
-                    denoised_data.shape[0] * (i): denoised_data.shape[0] * (i + 1)
-                ] = denoised_data[:, :, i]
-            if log_transform is True:
-                flattened[:, : self.n_genes] = np.log(
-                    flattened[:, : self.n_genes] + 1e-8
+                flattened[denoised_data.shape[0] * (i) : denoised_data.shape[0] * (i + 1)] = (
+                    denoised_data[:, :, i]
                 )
-                flattened[:, self.n_genes:] = np.log1p(
-                    flattened[:, self.n_genes:])
+            if log_transform is True:
+                flattened[:, : self.n_genes] = np.log(flattened[:, : self.n_genes] + 1e-8)
+                flattened[:, self.n_genes :] = np.log1p(flattened[:, self.n_genes :])
             if correlation_type == "pearson":
                 corr_matrix = np.corrcoef(flattened, rowvar=False)
             else:
@@ -1093,14 +1035,11 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         """
         raise NotImplementedError
 
-    def _validate_anndata(
-        self, adata: Optional[AnnData] = None, copy_if_view: bool = True
-    ):
+    def _validate_anndata(self, adata: Optional[AnnData] = None, copy_if_view: bool = True):
         adata = super()._validate_anndata(adata=adata, copy_if_view=copy_if_view)
         error_msg = "Number of {} in anndata different from when setup_anndata was run. Please rerun setup_anndata."
         if REGISTRY_KEYS.PROTEIN_EXP_KEY in self.adata_manager.data_registry.keys():
-            pro_exp = self.get_from_registry(
-                adata, REGISTRY_KEYS.PROTEIN_EXP_KEY)
+            pro_exp = self.get_from_registry(adata, REGISTRY_KEYS.PROTEIN_EXP_KEY)
             if self.summary_stats.n_proteins != pro_exp.shape[1]:
                 raise ValueError(error_msg.format("proteins"))
             is_nonneg_int = _check_nonnegative_integers(pro_exp)
@@ -1121,22 +1060,16 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
 
         with warnings.catch_warnings():
             warnings.filterwarnings("error")
-            logger.info(
-                "Computing empirical prior initialization for protein background."
-            )
+            logger.info("Computing empirical prior initialization for protein background.")
 
             adata = self._validate_anndata(adata)
             adata_manager = self.get_anndata_manager(adata)
-            pro_exp = adata_manager.get_from_registry(
-                REGISTRY_KEYS.PROTEIN_EXP_KEY)
-            pro_exp = (
-                pro_exp.to_numpy() if isinstance(pro_exp, pd.DataFrame) else pro_exp
+            pro_exp = adata_manager.get_from_registry(REGISTRY_KEYS.PROTEIN_EXP_KEY)
+            pro_exp = pro_exp.to_numpy() if isinstance(pro_exp, pd.DataFrame) else pro_exp
+            batch_mask = adata_manager.get_state_registry(REGISTRY_KEYS.PROTEIN_EXP_KEY).get(
+                fields.ProteinObsmField.PROTEIN_BATCH_MASK
             )
-            batch_mask = adata_manager.get_state_registry(
-                REGISTRY_KEYS.PROTEIN_EXP_KEY
-            ).get(fields.ProteinObsmField.PROTEIN_BATCH_MASK)
-            batch = adata_manager.get_from_registry(
-                REGISTRY_KEYS.BATCH_KEY).ravel()
+            batch = adata_manager.get_from_registry(REGISTRY_KEYS.BATCH_KEY).ravel()
             cats = adata_manager.get_state_registry(REGISTRY_KEYS.BATCH_KEY)[
                 fields.CategoricalObsField.CATEGORICAL_MAPPING_KEY
             ]
@@ -1171,9 +1104,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
                     batch_avg_scales.append(0.05)
                     continue
 
-                cells = np.random.choice(
-                    np.arange(batch_pro_exp.shape[0]), size=n_cells
-                )
+                cells = np.random.choice(np.arange(batch_pro_exp.shape[0]), size=n_cells)
                 batch_pro_exp = batch_pro_exp[cells]
                 gmm = GaussianMixture(n_components=2)
                 mus, scales = [], []
@@ -1197,18 +1128,14 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
 
                 # average distribution over cells
                 batch_avg_mu = np.mean(mus)
-                batch_avg_scale = np.sqrt(
-                    np.sum(np.square(scales)) / (n_cells**2))
+                batch_avg_scale = np.sqrt(np.sum(np.square(scales)) / (n_cells**2))
 
                 batch_avg_mus.append(batch_avg_mu)
                 batch_avg_scales.append(batch_avg_scale)
 
             # repeat prior for each protein
-            batch_avg_mus = np.array(
-                batch_avg_mus, dtype=np.float32).reshape(1, -1)
-            batch_avg_scales = np.array(batch_avg_scales, dtype=np.float32).reshape(
-                1, -1
-            )
+            batch_avg_mus = np.array(batch_avg_mus, dtype=np.float32).reshape(1, -1)
+            batch_avg_scales = np.array(batch_avg_scales, dtype=np.float32).reshape(1, -1)
             batch_avg_mus = np.tile(batch_avg_mus, (pro_exp.shape[1], 1))
             batch_avg_scales = np.tile(batch_avg_scales, (pro_exp.shape[1], 1))
 
@@ -1216,14 +1143,14 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
 
     @torch.inference_mode()
     def get_latent_representation(
-            self,
-            adata: Optional[AnnData] = None,
-            indices: Optional[Sequence[int]] = None,
-            give_mean: bool = True,
-            mc_samples: int = 5000,
-            batch_size: Optional[int] = None,
-            return_dist: bool = False,
-            add_latents_to_adata: bool = True,
+        self,
+        adata: Optional[AnnData] = None,
+        indices: Optional[Sequence[int]] = None,
+        give_mean: bool = True,
+        mc_samples: int = 5000,
+        batch_size: Optional[int] = None,
+        return_dist: bool = False,
+        add_latents_to_adata: bool = True,
     ):
         """Return the latent representation for each cell.
 
@@ -1319,7 +1246,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         if latent1a is not None:
             latent_c = np.concatenate((latent_c, latent1a), axis=1)
         if add_latents_to_adata:
-            adata.obsm['Z_multiHIVE'] = latent_c
+            adata.obsm["Z_multiHIVE"] = latent_c
             adata.obsm["Z1_multiHIVE"] = latent1
             adata.obsm["Z2_multiHIVE"] = latent2
             adata.obsm["Zr_multiHIVE"] = latent1r
@@ -1335,7 +1262,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             Z2_multiHIVE=latent2,
             Zr_multiHIVE=latent1r,
             Zp_multiHIVE=latent1p,
-            Za_multiHIVE=latent1a
+            Za_multiHIVE=latent1a,
         )
 
     @torch.inference_mode()
@@ -1399,26 +1326,20 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             indices = np.arange(adata.n_obs)
         if n_samples_overall is not None:
             indices = np.random.choice(indices, n_samples_overall)
-        post = self._make_data_loader(
-            adata=adata, indices=indices, batch_size=batch_size
-        )
-        transform_batch = _get_batch_code_from_category(
-            adata_manager, transform_batch)
+        post = self._make_data_loader(adata=adata, indices=indices, batch_size=batch_size)
+        transform_batch = _get_batch_code_from_category(adata_manager, transform_batch)
 
         if region_list is None:
             region_mask = slice(None)
         else:
-            region_mask = [
-                region in region_list for region in adata.var_names[self.n_genes:]
-            ]
+            region_mask = [region in region_list for region in adata.var_names[self.n_genes :]]
 
         if threshold is not None and (threshold < 0 or threshold > 1):
             raise ValueError("the provided threshold must be between 0 and 1")
 
         imputed = []
         for tensors in post:
-            get_generative_input_kwargs = dict(
-                transform_batch=transform_batch[0])
+            get_generative_input_kwargs = dict(transform_batch=transform_batch[0])
             generative_kwargs = dict(use_z_mean=use_z_mean)
             inference_outputs, generative_outputs = self.module.forward(
                 tensors=tensors,
@@ -1450,25 +1371,25 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             return pd.DataFrame.sparse.from_spmatrix(
                 imputed,
                 index=adata.obs_names[indices],
-                columns=adata.var_names[self.n_genes:][region_mask],
+                columns=adata.var_names[self.n_genes :][region_mask],
             )
         else:
             return pd.DataFrame(
                 imputed,
                 index=adata.obs_names[indices],
-                columns=adata.var_names[self.n_genes:][region_mask],
+                columns=adata.var_names[self.n_genes :][region_mask],
             )
 
     @torch.inference_mode()
     def posterior_predictive_sample(
-            self,
-            adata: Optional[AnnData] = None,
-            indices: Optional[Sequence[int]] = None,
-            n_samples: int = 1,
-            batch_size: Optional[int] = None,
-            gene_list: Optional[Sequence[str]] = None,
-            protein_list: Optional[Sequence[str]] = None,
-            swap_latent=False,
+        self,
+        adata: Optional[AnnData] = None,
+        indices: Optional[Sequence[int]] = None,
+        n_samples: int = 1,
+        batch_size: Optional[int] = None,
+        gene_list: Optional[Sequence[str]] = None,
+        protein_list: Optional[Sequence[str]] = None,
+        swap_latent=False,
     ) -> np.ndarray:
         r"""Generate observation samples from the posterior predictive distribution.
 
@@ -1513,9 +1434,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             all_proteins = self.protein_state_registry.column_names
             protein_mask = [True if p in protein_list else False for p in all_proteins]
 
-        scdl = self._make_data_loader(
-            adata=adata, indices=indices, batch_size=batch_size
-        )
+        scdl = self._make_data_loader(adata=adata, indices=indices, batch_size=batch_size)
 
         scdl_list = []
         for tensors in scdl:
@@ -1578,12 +1497,9 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             batch_field,
             CategoricalObsField(REGISTRY_KEYS.LABELS_KEY, None),
             CategoricalObsField(REGISTRY_KEYS.BATCH_KEY, batch_key),
-            NumericalJointObsField(
-                REGISTRY_KEYS.SIZE_FACTOR_KEY, size_factor_key, required=False),
-            CategoricalJointObsField(
-                REGISTRY_KEYS.CAT_COVS_KEY, categorical_covariate_keys),
-            NumericalJointObsField(
-                REGISTRY_KEYS.CONT_COVS_KEY, continuous_covariate_keys),
+            NumericalJointObsField(REGISTRY_KEYS.SIZE_FACTOR_KEY, size_factor_key, required=False),
+            CategoricalJointObsField(REGISTRY_KEYS.CAT_COVS_KEY, categorical_covariate_keys),
+            NumericalJointObsField(REGISTRY_KEYS.CONT_COVS_KEY, continuous_covariate_keys),
             NumericalObsField(REGISTRY_KEYS.INDICES_KEY, "_indices"),
         ]
         if protein_expression_obsm_key is not None:
@@ -1598,7 +1514,6 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
                 )
             )
 
-        adata_manager = AnnDataManager(
-            fields=anndata_fields, setup_method_args=setup_method_args)
+        adata_manager = AnnDataManager(fields=anndata_fields, setup_method_args=setup_method_args)
         adata_manager.register_fields(adata, **kwargs)
         cls.register_manager(adata_manager)

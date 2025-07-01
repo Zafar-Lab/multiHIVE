@@ -49,13 +49,15 @@ class Encoder(nn.Module):
 
         self.encoder_r_1 = nn.Sequential(
             nn.Linear(n_input + n_cat_list[0], n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                           affine=True, track_running_stats=True),
+            nn.BatchNorm1d(
+                n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+            ),
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False),
             nn.Linear(n_hidden, n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                           affine=True, track_running_stats=True),
+            nn.BatchNorm1d(
+                n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+            ),
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False),
         )
@@ -63,20 +65,23 @@ class Encoder(nn.Module):
 
             self.encoder_r_1 = nn.Sequential(
                 nn.Linear(n_input + n_cat_list[0], n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
                 nn.Linear(n_hidden, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
                 nn.Linear(n_hidden, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
-                nn.Dropout(p=0.2, inplace=False)
+                nn.Dropout(p=0.2, inplace=False),
             )
         self.z_mean_encoder_delta_1 = nn.Linear(n_hidden, n_shared_latent)
         self.z_var_encoder_delta_1 = nn.Linear(n_hidden, n_shared_latent)
@@ -84,33 +89,38 @@ class Encoder(nn.Module):
         self.encoder_r_2 = nn.Sequential(
             # nn.Linear(n_hidden + n_cat_list[0], n_hidden),
             nn.Linear(n_hidden, n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                           affine=True, track_running_stats=True),
+            nn.BatchNorm1d(
+                n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+            ),
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False),
             nn.Linear(n_hidden, n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                           affine=True, track_running_stats=True),
+            nn.BatchNorm1d(
+                n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+            ),
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False),
         )
-        
+
         if self.deep_network:
             self.encoder_r_2 = nn.Sequential(
                 # nn.Linear(n_hidden + n_cat_list[0], n_hidden),
                 nn.Linear(n_hidden, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
                 nn.Linear(n_hidden, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
                 nn.Linear(n_hidden, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
             )
@@ -120,31 +130,36 @@ class Encoder(nn.Module):
 
         self.gene_encoder = nn.Sequential(
             nn.Linear(n_input_genes + n_cat_list[0], n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                           affine=True, track_running_stats=True),
+            nn.BatchNorm1d(
+                n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+            ),
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False),
             nn.Linear(n_hidden, n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                           affine=True, track_running_stats=True),
+            nn.BatchNorm1d(
+                n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+            ),
             nn.ReLU(),
-            nn.Dropout(p=0.2, inplace=False)
+            nn.Dropout(p=0.2, inplace=False),
         )
         if deep_network:
             self.gene_encoder = nn.Sequential(
                 nn.Linear(n_input_genes + n_cat_list[0], n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
                 nn.Linear(n_hidden, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
                 nn.Linear(n_hidden, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
             )
@@ -156,32 +171,57 @@ class Encoder(nn.Module):
 
             self.protein_encoder = nn.Sequential(
                 nn.Linear(n_input_proteins + n_cat_list[0], n_hidden_protein),
-                nn.BatchNorm1d(n_hidden_protein, eps=0.001, momentum=0.01,
-                               affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden_protein,
+                    eps=0.001,
+                    momentum=0.01,
+                    affine=True,
+                    track_running_stats=True,
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
                 nn.Linear(n_hidden_protein, n_hidden_protein),
-                nn.BatchNorm1d(n_hidden_protein, eps=0.001, momentum=0.01,
-                               affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden_protein,
+                    eps=0.001,
+                    momentum=0.01,
+                    affine=True,
+                    track_running_stats=True,
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
             )
-            
+
             if self.deep_network:
                 self.protein_encoder = nn.Sequential(
                     nn.Linear(n_input_proteins + n_cat_list[0], n_hidden_protein),
-                    nn.BatchNorm1d(n_hidden_protein, eps=0.001, momentum=0.01,
-                                affine=True, track_running_stats=True),
+                    nn.BatchNorm1d(
+                        n_hidden_protein,
+                        eps=0.001,
+                        momentum=0.01,
+                        affine=True,
+                        track_running_stats=True,
+                    ),
                     nn.ReLU(),
                     nn.Dropout(p=0.2, inplace=False),
                     nn.Linear(n_hidden_protein, n_hidden_protein),
-                    nn.BatchNorm1d(n_hidden_protein, eps=0.001, momentum=0.01,
-                                affine=True, track_running_stats=True),
+                    nn.BatchNorm1d(
+                        n_hidden_protein,
+                        eps=0.001,
+                        momentum=0.01,
+                        affine=True,
+                        track_running_stats=True,
+                    ),
                     nn.ReLU(),
                     nn.Dropout(p=0.2, inplace=False),
                     nn.Linear(n_hidden_protein, n_hidden_protein),
-                    nn.BatchNorm1d(n_hidden_protein, eps=0.001, momentum=0.01,
-                                affine=True, track_running_stats=True),
+                    nn.BatchNorm1d(
+                        n_hidden_protein,
+                        eps=0.001,
+                        momentum=0.01,
+                        affine=True,
+                        track_running_stats=True,
+                    ),
                     nn.ReLU(),
                     nn.Dropout(p=0.2, inplace=False),
                 )
@@ -194,7 +234,7 @@ class Encoder(nn.Module):
             self.z_encoder_accessibility = EncoderAcc(
                 n_input=n_input_regions + n_cat_list[0],
                 n_layers=2,
-                n_output=20,
+                n_output=n_output,
                 n_hidden=128,
                 n_cat_list=None,
                 dropout_rate=dropout_rate,
@@ -218,26 +258,30 @@ class Encoder(nn.Module):
 
         self.encoder_z_1 = nn.Sequential(
             nn.Linear(n_shared_latent2, n_hidden),
-            nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                           affine=True, track_running_stats=True),
+            nn.BatchNorm1d(
+                n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+            ),
             nn.ReLU(),
             nn.Dropout(p=0.2, inplace=False),
         )
         if self.deep_network:
             self.encoder_z_1 = nn.Sequential(
                 nn.Linear(n_shared_latent2, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
                 nn.Linear(n_hidden, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
                 nn.Linear(n_hidden, n_hidden),
-                nn.BatchNorm1d(n_hidden, eps=0.001, momentum=0.01,
-                            affine=True, track_running_stats=True),
+                nn.BatchNorm1d(
+                    n_hidden, eps=0.001, momentum=0.01, affine=True, track_running_stats=True
+                ),
                 nn.ReLU(),
                 nn.Dropout(p=0.2, inplace=False),
             )
@@ -250,7 +294,14 @@ class Encoder(nn.Module):
         self.zp_transformation = nn.Softmax(dim=-1)
         self.za_transformation = nn.Softmax(dim=-1)
 
-    def forward(self, gene: torch.Tensor, protein: torch.Tensor, acc: torch.Tensor, data: torch.Tensor,  *cat_list: int):
+    def forward(
+        self,
+        gene: torch.Tensor,
+        protein: torch.Tensor,
+        acc: torch.Tensor,
+        data: torch.Tensor,
+        *cat_list: int,
+    ):
         batch_onehot_data = one_hot(*cat_list, self.cat)
         data1 = torch.cat((data, batch_onehot_data), dim=-1)
 
@@ -258,13 +309,13 @@ class Encoder(nn.Module):
 
         delta_mu_1 = self.z_mean_encoder_delta_1(r_1)
         delta_logvar_1 = self.z_var_encoder_delta_1(r_1)
-        delta_logvar_1 = F.hardtanh(delta_logvar_1, -7., 2.)
+        delta_logvar_1 = F.hardtanh(delta_logvar_1, -7.0, 2.0)
 
         r_2 = self.encoder_r_2(r_1)
 
         delta_mu_2 = self.mean_encoder_delta_2(r_2)
         delta_logvar_2 = self.logvar_encoder_delta_2(r_2)
-        delta_logvar_2 = F.hardtanh(delta_logvar_2, -7., 2.)
+        delta_logvar_2 = F.hardtanh(delta_logvar_2, -7.0, 2.0)
         delta_var_2 = torch.exp(0.5 * delta_logvar_2) + 1e-4
 
         q_z2 = Normal(delta_mu_2, delta_var_2.sqrt())
@@ -280,58 +331,58 @@ class Encoder(nn.Module):
         q_z1 = Normal(z1_mu, z1_var.sqrt())
         untran_z1 = q_z1.rsample()
         z1 = untran_z1
-        KL_z_2 = 0.5 * (delta_mu_2 ** 2 +
-                        torch.exp(delta_logvar_2) - delta_logvar_2 - 1).sum(-1)
-        KL_z_1 = 0.5 * (delta_mu_1 ** 2 / torch.exp(logvar_1) + torch.exp(delta_logvar_1) - delta_logvar_1 - 1).sum(
-            -1)
+        KL_z_2 = 0.5 * (delta_mu_2**2 + torch.exp(delta_logvar_2) - delta_logvar_2 - 1).sum(-1)
+        KL_z_1 = 0.5 * (
+            delta_mu_1**2 / torch.exp(logvar_1) + torch.exp(delta_logvar_1) - delta_logvar_1 - 1
+        ).sum(-1)
 
-        r_1_gene = self.gene_encoder(
-                torch.cat((gene, batch_onehot_data), dim=-1))
+        r_1_gene = self.gene_encoder(torch.cat((gene, batch_onehot_data), dim=-1))
         delta_mu_1_gene = self.zr_mean_encoder(r_1_gene)
         delta_logvar_1_gene = self.zr_var_encoder(r_1_gene)
-        delta_logvar_1_gene = F.hardtanh(delta_logvar_1_gene, -7., 2.)
+        delta_logvar_1_gene = F.hardtanh(delta_logvar_1_gene, -7.0, 2.0)
         delta_var_1_gene = torch.exp(0.5 * delta_logvar_1_gene) + 1e-4
         q_z1r = Normal(delta_mu_1_gene, delta_var_1_gene.sqrt())
         untran_z1r = q_z1r.rsample()
         z1r = untran_z1r
-        KL_z_1r = 0.5 * (delta_mu_1_gene ** 2 +
-                         torch.exp(delta_logvar_1_gene) - delta_logvar_1_gene - 1).sum(-1)
+        KL_z_1r = 0.5 * (
+            delta_mu_1_gene**2 + torch.exp(delta_logvar_1_gene) - delta_logvar_1_gene - 1
+        ).sum(-1)
 
         KL_z_1p = 0
         q_z1p = None
         if self.n_input_proteins > 0:
 
-            r_1_protein = self.protein_encoder(
-                    torch.cat((protein, batch_onehot_data), dim=-1))
+            r_1_protein = self.protein_encoder(torch.cat((protein, batch_onehot_data), dim=-1))
             delta_mu_1_protein = self.zp_mean_encoder(r_1_protein)
             delta_logvar_1_protein = self.zp_var_encoder(r_1_protein)
-            delta_logvar_1_protein = F.hardtanh(
-                delta_logvar_1_protein, -7., 2.)
-            delta_var_1_protein = torch.exp(
-                0.5 * delta_logvar_1_protein) + 1e-4
+            delta_logvar_1_protein = F.hardtanh(delta_logvar_1_protein, -7.0, 2.0)
+            delta_var_1_protein = torch.exp(0.5 * delta_logvar_1_protein) + 1e-4
             q_z1p = Normal(delta_mu_1_protein, delta_var_1_protein.sqrt())
             untran_z1p = q_z1p.rsample()
             z1p = untran_z1p
             KL_z_1p = 0.5 * (
-                delta_mu_1_protein ** 2 + torch.exp(delta_logvar_1_protein) - delta_logvar_1_protein - 1).sum(-1)
+                delta_mu_1_protein**2
+                + torch.exp(delta_logvar_1_protein)
+                - delta_logvar_1_protein
+                - 1
+            ).sum(-1)
 
         KL_z_acc = 0
         qz1a = None
         libsize_acc = None
-        
-        if self.n_input_regions > 0:
-            q_mu_acc, q_mu_acc, qz1a, z1a, untran_z1a =  \
-                self.z_encoder_accessibility(
-                    torch.cat((acc, batch_onehot_data), dim=-1))
-            libsize_acc = self.l_encoder_accessibility(
-                torch.cat((acc, batch_onehot_data), dim=-1))        #TODO 
-            KL_z_acc = 0.5 * (q_mu_acc ** 2 +
-                              torch.exp(q_mu_acc) - q_mu_acc - 1).sum(-1)
 
+        if self.n_input_regions > 0:
+            q_mu_acc, q_mu_acc, qz1a, z1a, untran_z1a = self.z_encoder_accessibility(
+                torch.cat((acc, batch_onehot_data), dim=-1)
+            )
+            libsize_acc = self.l_encoder_accessibility(
+                torch.cat((acc, batch_onehot_data), dim=-1)
+            )  # TODO
+            KL_z_acc = 0.5 * (q_mu_acc**2 + torch.exp(q_mu_acc) - q_mu_acc - 1).sum(-1)
 
         KL = KL_z_1 + KL_z_2 + KL_z_1r + KL_z_1p + KL_z_acc
 
-        if (self.kl_dot_product): # addging closeness of shared and private embedding
+        if self.kl_dot_product:  # addging closeness of shared and private embedding
             KL = KL + 0.6 * torch.abs((z1 * z1r).sum(dim=1))
             if self.n_input_proteins > 0:
                 KL = KL + 0.6 * torch.abs((z1 * z1p).sum(dim=1))
@@ -396,8 +447,8 @@ class Decoder(nn.Module):
             "dropout_rate": 0,
         }
 
-        n_shared_latent = 20
-        n_input = 20
+        n_shared_latent = n_input
+        n_input = n_input
 
         self.px_decoder = FCLayers(
             n_in=n_input + n_shared_latent,
@@ -421,7 +472,7 @@ class Decoder(nn.Module):
             self.px_scale_activation = nn.Softmax(dim=-1)
         elif scale_activation == "softplus":
             self.px_scale_activation = nn.Softplus()
-        
+
         if n_output_proteins > 0:
 
             n_hidden_protein = 256
@@ -486,10 +537,10 @@ class Decoder(nn.Module):
             use_layer_norm=use_layer_norm,
         )
         self.px_dropout_decoder_gene = FCLayers(
-        n_in=n_hidden + n_input + n_shared_latent,
-        n_out=n_output_genes,
-        n_cat_list=n_cat_list,
-        **linear_args,
+            n_in=n_hidden + n_input + n_shared_latent,
+            n_out=n_output_genes,
+            n_cat_list=n_cat_list,
+            **linear_args,
         )
         if n_output_proteins > 0:
             self.py_background_decoder = FCLayers(
@@ -498,7 +549,7 @@ class Decoder(nn.Module):
                 n_cat_list=n_cat_list,
                 **linear_args,
             )
-        if n_output_regions > 0 :
+        if n_output_regions > 0:
             self.z_decoder_accessibility = DecoderPeakVI(
                 n_input=n_input + n_shared_latent,
                 n_output=n_output_regions,
@@ -513,7 +564,15 @@ class Decoder(nn.Module):
         # self.pa_output = torch.nn.Sequential(
         #     torch.nn.Linear(n_hidden, n_output), torch.nn.Sigmoid())
 
-    def forward(self, z: torch.Tensor, zr: torch.Tensor,  zp: torch.Tensor, za: torch.Tensor, library_gene: torch.Tensor, *cat_list: int):
+    def forward(
+        self,
+        z: torch.Tensor,
+        zr: torch.Tensor,
+        zp: torch.Tensor,
+        za: torch.Tensor,
+        library_gene: torch.Tensor,
+        *cat_list: int,
+    ):
         px_ = {}
         py_ = {}
         pa_ = {}
@@ -527,32 +586,28 @@ class Decoder(nn.Module):
         p_mixing = self.sigmoid_decoder(z, *cat_list)
         p_mixing_cat_z = torch.cat([p_mixing, z], dim=-1)
         px_["dropout"] = self.px_dropout_decoder_gene(
-            torch.cat([p_mixing_cat_z, zr], dim=-1), *cat_list)
-        
+            torch.cat([p_mixing_cat_z, zr], dim=-1), *cat_list
+        )
+
         log_pro_back_mean = None
-        if self.n_output_proteins>0:
+        if self.n_output_proteins > 0:
 
             py_back = self.py_back_decoder(torch.cat([z, zp], dim=-1), *cat_list)
             py_back_cat_z = torch.cat([py_back, z, zp], dim=-1)
-            py_["back_alpha"] = self.py_back_mean_log_alpha(
-                py_back_cat_z, *cat_list)
-            py_["back_beta"] = torch.exp(
-                self.py_back_mean_log_beta(py_back_cat_z, *cat_list)
-            )
-            log_pro_back_mean = Normal(py_["back_alpha"], py_[
-                                    "back_beta"]).rsample()
+            py_["back_alpha"] = self.py_back_mean_log_alpha(py_back_cat_z, *cat_list)
+            py_["back_beta"] = torch.exp(self.py_back_mean_log_beta(py_back_cat_z, *cat_list))
+            log_pro_back_mean = Normal(py_["back_alpha"], py_["back_beta"]).rsample()
             py_["log_pro_back_mean"] = log_pro_back_mean
             py_["rate_back"] = torch.exp(log_pro_back_mean)
 
             py_fore = self.py_fore_decoder(torch.cat([z, zp], dim=-1), *cat_list)
             py_fore_cat_z = torch.cat([py_fore, z, zp], dim=-1)
-            py_["fore_scale"] = (
-                self.py_fore_scale_decoder(py_fore_cat_z, *cat_list) + 1 + 1e-8
-            )
+            py_["fore_scale"] = self.py_fore_scale_decoder(py_fore_cat_z, *cat_list) + 1 + 1e-8
             py_["rate_fore"] = py_["rate_back"] * py_["fore_scale"]
 
             py_["mixing"] = self.py_background_decoder(
-                torch.cat([p_mixing_cat_z, zp], dim=-1), *cat_list)
+                torch.cat([p_mixing_cat_z, zp], dim=-1), *cat_list
+            )
 
             protein_mixing = 1 / (1 + torch.exp(-py_["mixing"]))
             py_["scale"] = torch.nn.functional.normalize(
@@ -560,8 +615,8 @@ class Decoder(nn.Module):
             )
 
         if self.n_output_regions > 0:
-        
-            pa =  self.z_decoder_accessibility(torch.cat([z,za], dim=-1), *cat_list)
+
+            pa = self.z_decoder_accessibility(torch.cat([z, za], dim=-1), *cat_list)
             pa_["pa"] = pa
 
         return (px_, py_, pa_, log_pro_back_mean)
