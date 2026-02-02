@@ -1,0 +1,44 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[project]
+name = "multiHIVE"  
+version = "0.1.0"
+description = "multiHIVE, a hierarchical multimodal deep generative model for integrating multiomics data"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"} 
+authors = [
+  {name = "Anirudh Nanduri*", email = "nandurianirudh28@gmail.com"},
+  {name = "Musale Krushna Pavan*", email = "krushna@cse.iitk.ac.in"},
+  {name = "Kushagra Pandey", email = "pandeyk1@uci.edu"},
+  {name = "Hamim Zafar", email = "hamim@iitk.ac.in"}
+]
+dependencies = [
+  "numpy<2.3",
+  "torch==2.6.0",
+  "scvi-tools==1.3.0",
+  "scikit-learn",
+  "scikit-misc",
+  "scanpy",
+  "mudata"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+docs = [
+  "nbsphinx>=0.9.3",
+  "sphinx-rtd-theme>=3.0.0",
+  "sphinxcontrib-bibtex>=2.6.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/Zafar-Lab/multiHIVE" 
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/multiHIVE"]
