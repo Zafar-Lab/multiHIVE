@@ -65,8 +65,78 @@ logger = logging.getLogger(__name__)
 
 
 class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin):
-    """
-    multiHIVE model.
+    """Initialize the MultiVI model.
+
+    Parameters
+    ----------
+    adata : AnnData
+        AnnOrMuData object that has been registered via :meth:`~multiHIVE.multiHIVE.setup_anndata`.
+        Features of the AnnData object should include gene expression followed by region accessibility(if exits).
+        If protein expression is available, it should be present in `obsm`.
+    n_genes : int
+        Number of genes in the dataset.
+    n_regions : int
+        Number of regions in the dataset.
+    n_proteins : int
+        Number of proteins in the dataset.
+    n_latent : int, optional, default=20
+        Dimensionality of the latent space.
+    n_hidden : Optional[int], optional
+        Number of hidden units in the neural network layers.
+    n_layers_encoder : int, optional, default=2
+        Number of layers in the encoder neural network.
+    n_layers_decoder : int, optional, default=2
+        Number of layers in the decoder neural network.
+    dropout_rate : float, optional, default=0.1
+        Dropout rate for the neural network layers.
+    region_factors : bool, optional, default=True
+        Whether to learn region-specific scaling factors for the accessibility regions.
+    use_batch_norm : Literal["encoder", "decoder", "none", "both"], optional, default="both"
+        Specifies where to use batch normalization.
+    use_layer_norm : Literal["encoder", "decoder", "none", "both"], optional, default="none"
+        Specifies where to use layer normalization.
+    gene_dispersion : Literal["gene", "gene-batch", "gene-label", "gene-cell"], optional, default="gene"
+        One of the following:
+        * ``'gene'`` - genes_dispersion parameter of NB is constant per gene across cells
+        * ``'gene-batch'`` - genes_dispersion can differ between different batches
+        * ``'gene-label'`` - genes_dispersion can differ between different labels
+        * ``'gene-cell'`` - genes_dispersion can differ between different cells
+    protein_dispersion : Literal["protein", "protein-batch", "protein-label"], optional, default="protein"
+        One of the following:
+        * ``'protein'`` - protein_dispersion parameter is constant per protein across cells
+        * ``'protein-batch'`` - protein_dispersion can differ between different batches NOT TESTED
+        * ``'protein-label'`` - protein_dispersion can differ between different labels NOT TESTED
+    gene_likelihood : Literal["zinb", "nb"], optional, default="nb"
+        One of:
+        * ``'nb'`` - Negative binomial distribution
+        * ``'zinb'`` - Zero-inflated negative binomial distribution
+    latent_distribution : Literal["normal", "ln"], optional, default="normal"
+        One of:
+        * ``'normal'`` - Normal distribution
+        * ``'ln'`` - Logistic normal distribution (Normal(0, I) transformed by softmax)
+    empirical_protein_background_prior : Optional[bool], optional
+        Set the initialization of protein background prior empirically. This option fits a GMM for
+        each of 100 cells per batch and averages the distributions. Note that even with this option
+        set to `True`, this only initializes a parameter that is learned during inference. If
+        `False`, randomly initializes. The default (`None`), sets this to `True` if greater than 10
+        proteins are used.
+    override_missing_proteins : bool, optional, default=False
+        If `True`, will not treat proteins with all 0 expression in a particular batch as missing.
+    deeply_inject_covariates : bool, optional, default=False
+        Whether to deeply inject covariates into the model.
+    encode_covariates : bool, optional, default=True
+        Whether to encode covariates in the model.
+    fully_paired : bool, optional, default=False
+        Whether the dataset is fully paired.
+    kl_dot_product : bool, optional, default=False
+        Whether to use KL divergence with dot product.
+    **model_kwargs
+        Additional keyword arguments for the model.
+
+    
+    Notes
+    -----
+    This class initializes the MultiVI model with the specified parameters and prepares the module for training.
     """
 
     _module_cls = multiHIVEvae
@@ -716,7 +786,6 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         Differential expression DataFrame.
         """
 
-
         adata = self._validate_anndata(adata)
         adata_manager = self.get_anndata_manager(adata, required=True)
         model_fn = partial(
@@ -1153,8 +1222,19 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         add_latents_to_adata: bool = True,
     ):
         """Return the latent representation for each cell.
-
-        This is typically denoted as :math:`z_n`.
+        This is typically denoted as :math:`z, z^{s1}, z^{s2}, z^r, z^a, z^p`.
+        
+        :math:`z` is the latent representation of the cell for downstream tasks
+        
+        :math:`z_{s1}` is the latent representation of the first level heirarchical representation
+        
+        :math:`z_{s2}` is the latent representation of the second level heirarchical representation
+        
+        :math:`z^r` is the latent representation of the genes
+        
+        :math:`z^a` is the latent representation of accessibility. (if applicable)
+        
+        :math:`z^p` is the latent representation of protein. (if applicable)
 
         Parameters
         ----------

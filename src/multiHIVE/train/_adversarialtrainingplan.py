@@ -94,7 +94,7 @@ class AdversarialModifiedPlan(TrainingPlan):
         adversarial_classifier: Union[bool, Classifier] = False,
         scale_adversarial_loss: Union[float, Literal["auto"]] = "auto",
         compile: bool = False,
-        compile_kwargs: dict | None = None,
+        compile_kwargs: Optional[dict] = None,
         **loss_kwargs,
     ):
         self.n_genes = n_genes

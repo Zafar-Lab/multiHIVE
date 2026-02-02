@@ -12,9 +12,9 @@ This enables multiHIVE to perform:
 - **Joint integration** of multi-modal data
 - **Denoising**
 - **Protein imputation**
-- **Integration of multi-modal and uni-modal datasets**
+- **Integration of multi-modal with uni-modal datasets**
 
-Additionally, multiHIVE enables factorization of denoised gene expression into interpretable gene expression programs, facilitating the identification of biological processes at multiple levels of cellular hierarchy.
+Additionally, multiHIVE's denoised gene expression cabn be factorized of into interpretable gene expression programs, facilitating the identification of biological processes at multiple levels of cellular hierarchy.
 
 <p align="center">
   <img src="Architecture.png" alt="multiHIVE Architecture" width="500"/>
@@ -22,13 +22,13 @@ Additionally, multiHIVE enables factorization of denoised gene expression into i
 
 ## Basic Installation
 
-we recommend users to directly clone our stable main branch and set multiHIVE as the working directory and install following dependencies in a new conda environment `python>=3.11`
+we recommend users to directly clone our stable main branch and set multiHIVE as the working directory and install following dependencies in a new conda environment `python>=3.11` or `conda create -n multiHIVE python==3.11`
 
 ```bash
 git clone https://github.com/Zafar-Lab/multiHIVE.git
 pip install scvi-tools==1.3.0
 pip install scanpy==1.11.0
-pip install scikit-misc
+pip install scikit-misc==0.3.1
 ```
 
 ## Or install directly via pip
@@ -69,7 +69,7 @@ vae.get_latent_representation()
 
 ### 3. **Results**:
 
-   - vae.get_latent_representation() gives zs1, zs2, zr and zp or/and za
+   -  vae.get_latent_representation() gives zs1, zs2, zr and zp or/and za
    -  zs1 is the joint latent variable. 
    -  zs2 is the hierarchical joint latent variable.
    -  zr is the gene modality specific latent variable.
@@ -77,7 +77,7 @@ vae.get_latent_representation()
    -  za is the chromatin accessibility specific latent variable
 
 ## Documentation
-For more advanced settings, preprocessing tips, and API references, refer to the multiHIVE Documentation (link coming soon)
+For more advanced settings, preprocessing tips, and API references, refer to the [multiHIVE Documentation](https://multihive.readthedocs.io/en/latest/)  
 
 ## Citation
 multiHIVE: Hierarchical Multimodal Deep Generative Model for Single-cell Multiomics Integration  
