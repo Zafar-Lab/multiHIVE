@@ -526,8 +526,13 @@ class Decoder(nn.Module):
             )
 
         # dropout (mixture component for proteins, ZI probability for genes)
+        input_sigmoid_decoder = n_shared_latent
+        if n_output_genes > 0:
+            input_sigmoid_decoder += n_input
+        if n_output_proteins > 0:
+            input_sigmoid_decoder += n_input
         self.sigmoid_decoder = FCLayers(
-            n_in=n_shared_latent,
+            n_in=input_sigmoid_decoder,
             n_out=n_hidden,
             n_cat_list=n_cat_list,
             n_layers=n_layers,
@@ -583,7 +588,11 @@ class Decoder(nn.Module):
         px_["scale"] = self.px_scale_activation(unnorm_px_scale)
         px_["rate"] = library_gene * px_["scale"]
 
-        p_mixing = self.sigmoid_decoder(z, *cat_list)
+        input_sigmoid_decoder = torch.cat([z, zr], dim=-1)
+        if self.n_output_proteins > 0:
+            input_sigmoid_decoder = torch.cat([input_sigmoid_decoder, zp], dim=-1)
+
+        p_mixing = self.sigmoid_decoder(input_sigmoid_decoder, *cat_list)
         p_mixing_cat_z = torch.cat([p_mixing, z], dim=-1)
         px_["dropout"] = self.px_dropout_decoder_gene(
             torch.cat([p_mixing_cat_z, zr], dim=-1), *cat_list

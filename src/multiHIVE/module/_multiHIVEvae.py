@@ -721,7 +721,7 @@ class multiHIVEvae(BaseModuleClass):
 
         px_ = generative_outputs["px_"]
         py_ = generative_outputs["py_"]
-        pa_ = generative_outputs["pa_"]  # TODO
+        pa_ = generative_outputs["pa_"]
 
         rna_dist = NegativeBinomial(mu=px_["rate"], theta=px_["r"])
         protein_dist = NegativeBinomialMixture(

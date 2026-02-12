@@ -826,88 +826,6 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         return result
 
     @torch.inference_mode()
-    def posterior_predictive_sample(
-        self,
-        adata: Optional[AnnData] = None,
-        indices: Optional[Sequence[int]] = None,
-        n_samples: int = 1,
-        batch_size: Optional[int] = None,
-        gene_list: Optional[Sequence[str]] = None,
-        protein_list: Optional[Sequence[str]] = None,
-        atac_list: Optional[Sequence[str]] = None,
-        swap_latent=False,
-    ) -> np.ndarray:
-        r"""Generate observation samples from the posterior predictive distribution.
-
-        The posterior predictive distribution is written as :math:`p(\hat{x}, \hat{y} \mid x, y)`.
-
-        Parameters
-        ----------
-        adata
-            AnnData object with equivalent structure to initial AnnData. If `None`, defaults to the
-            AnnData object used to initialize the model.
-        indices
-            Indices of cells in adata to use. If `None`, all cells are used.
-        n_samples
-            Number of required samples for each cell
-        batch_size
-            Minibatch size for data loading into model. Defaults to `scvi.settings.batch_size`.
-        gene_list
-            Names of genes of interest
-        protein_list
-            Names of proteins of interest
-        swap_latent
-            uses z2 instead of z1 while regenerating gene
-
-        Returns
-        -------
-        x_new : :class:`~numpy.ndarray`
-            tensor with shape (n_cells, n_genes, n_samples)
-        """
-        if self.module.gene_likelihood not in ["nb"]:
-            raise ValueError("Invalid gene_likelihood")
-
-        adata = self._validate_anndata(adata)
-        adata_manager = self.get_anndata_manager(adata, required=True)
-        if gene_list is None:
-            gene_mask = slice(None)
-        else:
-            all_genes = _get_var_names_from_manager(adata_manager)
-            gene_mask = [True if gene in gene_list else False for gene in all_genes]
-        if protein_list is None:
-            protein_mask = slice(None)
-        else:
-            all_proteins = self.protein_state_registry.column_names
-            protein_mask = [True if p in protein_list else False for p in all_proteins]
-
-        if atac_list is None:
-            atac_mask = slice(None)
-        else:
-            all_atac = self.atac_state_registry.column_names
-            atac_mask = [True if atac in atac_list else False for atac in all_atac]
-
-        scdl = self._make_data_loader(  # Need to implement in hierarVAE to return atac in scdl. Currently inherited from totalVAE in scvi code
-            adata=adata, indices=indices, batch_size=batch_size
-        )
-
-        scdl_list = []
-        for tensors in scdl:
-            rna_sample, protein_sample = self.module.sample(
-                tensors, n_samples=n_samples, swap_latent=swap_latent
-            )
-            rna_sample = rna_sample[..., gene_mask]
-            protein_sample = protein_sample[..., protein_mask]
-            atac_sample = protein_sample[..., atac_mask]
-            data = torch.cat([rna_sample, protein_sample, atac_sample], dim=-1).numpy()
-
-            scdl_list += [data]
-            if n_samples > 1:
-                scdl_list[-1] = np.transpose(scdl_list[-1], (1, 2, 0))
-        scdl_list = np.concatenate(scdl_list, axis=0)
-
-        return scdl_list
-
-    @torch.inference_mode()
     def _get_denoised_samples(
         self,
         adata=None,
@@ -1469,6 +1387,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         batch_size: Optional[int] = None,
         gene_list: Optional[Sequence[str]] = None,
         protein_list: Optional[Sequence[str]] = None,
+        atac_list: Optional[Sequence[str]] = None,
         swap_latent=False,
     ) -> np.ndarray:
         r"""Generate observation samples from the posterior predictive distribution.
@@ -1514,7 +1433,15 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             all_proteins = self.protein_state_registry.column_names
             protein_mask = [True if p in protein_list else False for p in all_proteins]
 
-        scdl = self._make_data_loader(adata=adata, indices=indices, batch_size=batch_size)
+        if atac_list is None:
+            atac_mask = slice(None)
+        else:
+            all_atac = self.atac_state_registry.column_names
+            atac_mask = [True if atac in atac_list else False for atac in all_atac]
+
+        scdl = self._make_data_loader(  # Need to implement in hierarVAE to return atac in scdl. Currently inherited from totalVAE in scvi code
+            adata=adata, indices=indices, batch_size=batch_size
+        )
 
         scdl_list = []
         for tensors in scdl:
@@ -1523,7 +1450,8 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
             )
             rna_sample = rna_sample[..., gene_mask]
             protein_sample = protein_sample[..., protein_mask]
-            data = torch.cat([rna_sample, protein_sample], dim=-1).numpy()
+            atac_sample = protein_sample[..., atac_mask]
+            data = torch.cat([rna_sample, protein_sample, atac_sample], dim=-1).numpy()
 
             scdl_list += [data]
             if n_samples > 1:
