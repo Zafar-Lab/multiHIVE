@@ -21,7 +21,7 @@ class Encoder(nn.Module):
         n_input: int,
         n_batch: int,
         n_continuous_cov: int,
-        n_latent: 20,
+        n_latent: int = 20,
         n_cat_list: Iterable[int] = None,
         n_hidden: int = 256,
         dropout_rate: float = 0.1,
@@ -372,13 +372,13 @@ class Encoder(nn.Module):
         libsize_acc = None
 
         if self.n_input_regions > 0:
-            q_mu_acc, q_mu_acc, qz1a, z1a, untran_z1a = self.z_encoder_accessibility(
+            q_mu_acc, q_var_acc, qz1a, z1a, untran_z1a = self.z_encoder_accessibility(
                 torch.cat((acc, batch_onehot_data), dim=-1)
             )
             libsize_acc = self.l_encoder_accessibility(
                 torch.cat((acc, batch_onehot_data), dim=-1)
-            )  # TODO
-            KL_z_acc = 0.5 * (q_mu_acc**2 + torch.exp(q_mu_acc) - q_mu_acc - 1).sum(-1)
+            )
+            KL_z_acc = 0.5 * (q_mu_acc**2 + torch.exp(q_var_acc) - q_var_acc - 1).sum(-1)
 
         KL = KL_z_1 + KL_z_2 + KL_z_1r + KL_z_1p + KL_z_acc
 

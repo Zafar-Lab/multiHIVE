@@ -4,7 +4,7 @@ requires = ["hatchling"]
 
 [project]
 name = "multiHIVE"  
-version = "0.1.0"
+version = "0.1.1"
 description = "multiHIVE, a hierarchical multimodal deep generative model for integrating multiomics data"
 readme = "README.md"
 requires-python = ">=3.11"

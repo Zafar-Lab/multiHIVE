@@ -56,13 +56,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#####
-
-# from ..module import HierarVAE
-
-
-logger = logging.getLogger(__name__)
-
 
 class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin):
     """Initialize the MultiVI model.
@@ -165,7 +158,7 @@ class multiHIVE(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass, ArchesMixin
         empirical_protein_background_prior: Optional[bool] = None,
         override_missing_proteins: bool = False,
         deeply_inject_covariates: bool = False,
-        encode_covariates: bool = True,  # False error TODO
+        encode_covariates: bool = True,  # if False gives error TODO
         fully_paired: bool = False,
         kl_dot_product: bool = False,
         **model_kwargs,

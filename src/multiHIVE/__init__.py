@@ -1,1 +1,1 @@
-from multiHIVE.model import multiHIVE
+from .model import multiHIVE
