@@ -32,9 +32,11 @@ classifiers = [
 
 [project.optional-dependencies]
 docs = [
+  "sphinx",
   "nbsphinx>=0.9.3",
-  "sphinx-rtd-theme>=3.0.0",
-  "sphinxcontrib-bibtex>=2.6.0"
+  "sphinx-book-theme>=0.3.0",
+  "sphinxcontrib-bibtex>=2.6.0",
+  "ipython"
 ]
 
 [project.urls]
